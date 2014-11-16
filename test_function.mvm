@@ -1,0 +1,22 @@
+function int a(int p1, int p2)
+{
+    int x;
+    x = 1;
+    int y;
+    y = x + 1;
+    int z = 0;
+
+    for (i in 3..4)
+    {
+        int a;
+        a += 1;
+        int b = 0;
+    }
+
+    return y;
+}
+
+function int b()
+{
+    return 1;
+}
