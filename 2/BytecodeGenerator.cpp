@@ -34,53 +34,43 @@ void BytecodeGenerator::setCurrentScopeId(uint16_t scopeId) {
     _currentScopeId = scopeId;
 }
 
-BytecodeGenerator::BytecodeVar BytecodeGenerator::findVarId(Scope* scope, const string& name) {
-    while (scope != 0) {
-        uint16_t scopeId = getScopeId(scope);
-        Scope::VarIterator varIt(scope);
-        while(varIt.hasNext()) {
-            AstVar* var = varIt.next();
-            if (var->name() == name) {
-                uint16_t varId = getVarId(scopeId, name);
-                return std::pair<uint16_t, uint16_t>(scopeId, varId);
-            }
-        }
-        scope = scope->parent();
-    }
-
-    throw TranslatorException();
+VarType BytecodeGenerator::resolveType(AstNode *node) {
+    return _typeInferencer.resolveType(node);
 }
 
-BytecodeGenerator::BytecodeVar BytecodeGenerator::findVarId(const string &name) {
-    return getVarId(currentScope, name);
+VarType BytecodeGenerator::getCommonType(VarType type1, VarType type2) {
+    return _typeInferencer.commonType(type1, type2);
 }
 
-uint16_t BytecodeGenerator::getVarId(uint16_t scopeId, const string& name) {
-
-}
-
-// string -> int -> double
 void BytecodeGenerator::addCast(VarType type, VarType targetType) {
     if (type == targetType) {
         return;
     }
-    if (targetType == VT_INT) {
+
+    switch(targetType) {
+    case VT_INT:
         if (type == VT_STRING) {
-            _bytecode.add(BC_S2I);
+            bytecode()->add(BC_S2I);
+            return;
         }
         else if (type == VT_DOUBLE) {
-            _bytecode.add(BC_D2I);
+            bytecode()->add(BC_D2I);
+            return;
         }
-    }
-    else if (targetType == VT_DOUBLE) {
-        if (type == VT_STRING) {
-            _bytecode.add(BC_S2I);
+        break;
+    case VT_DOUBLE:
+        if (type == VT_INT) {
+            bytecode()->add(BC_I2D);
+            return;
         }
-        _bytecode.add(BC_I2D);
+        break;
+    default:
+        throw TranslationException();
+        break;
     }
 }
 
-void BytecodeGenerator::addOp(VarType type, Instruction intInsn, Instruction doubleInsn) {
+void BytecodeGenerator::addIntDoubleInsn(VarType type, Instruction intInsn, Instruction doubleInsn) {
     switch(type) {
     case VT_INT:
         bytecode()->add(intInsn);
@@ -89,89 +79,148 @@ void BytecodeGenerator::addOp(VarType type, Instruction intInsn, Instruction dou
         bytecode()->add(doubleInsn);
         break;
     default:
-        throw TranslatorException();
+        throw TranslationException();
+        break;
+    }
+}
+
+void BytecodeGenerator::addStringIntDoubleInsn(VarType type, Instruction stringInsn, Instruction intInsn, Instruction doubleInsn) {
+    switch(type) {
+    case VT_STRING:
+        bytecode()->add(stringInsn);
+        break;
+    case VT_INT:
+        bytecode()->add(intInsn);
+        break;
+    case VT_DOUBLE:
+        bytecode()->add(doubleInsn);
+        break;
+    default:
+        throw TranslationException();
         break;
     }
 }
 
 void BytecodeGenerator::addAdd(VarType type) {
-    addOp(type, BC_IADD, BC_DADD);
+    addIntDoubleInsn(type, BC_IADD, BC_DADD);
 }
 
 void BytecodeGenerator::addSub(VarType type) {
-    addOp(type, BC_ISUB, BC_DSUB);
+    addIntDoubleInsn(type, BC_ISUB, BC_DSUB);
 }
 
 void BytecodeGenerator::addMul(VarType type) {
-    addOp(type, BC_IMUL, BC_DMUL);
+    addIntDoubleInsn(type, BC_IMUL, BC_DMUL);
 }
 
 void BytecodeGenerator::addDiv(VarType type) {
-    addOp(type, BC_IDIV, BC_DDIV);
+    addIntDoubleInsn(type, BC_IDIV, BC_DDIV);
 }
 
 void BytecodeGenerator::addMod(VarType type) {
     if (type == VT_INT) {
         bytecode()->add(BC_IMOD);
+        return;
     }
 
-    throw TranslatorException();
+    throw TranslationException();
 }
 
 void BytecodeGenerator::addNeg(VarType type) {
-    addOp(type, BC_INEG, BC_DNEG);
+    addIntDoubleInsn(type, BC_INEG, BC_DNEG);
 }
 
-void BytecodeGenerator::addIf0(Instruction zeroInsn,
-                               Instruction ifInsn,
-                               Instruction thenInsn,
-                               Instruction elseInsn) {
-    Label lElse(bytecode());
+/*
+ * == 0 -> false
+ * == 1 -> true
+*/
+
+void BytecodeGenerator::addCastIntToBool() {
+    Label lJump(bytecode());
     Label lEnd(bytecode());
 
-    bytecode()->add(zeroInsn);
-    bytecode()->addBranch(ifInsn, lElse);
-    bytecode()->add(thenInsn);
+    bytecode()->add(BC_ILOAD0);
+    bytecode()->addBranch(BC_IFICMPE, lJump);
+    bytecode()->add(BC_POP);
+    bytecode()->add(BC_POP);
+    bytecode()->add(BC_ILOAD1);
     bytecode()->addBranch(BC_JA, lEnd);
-    lElse.bind(bytecode()->length());
-    bytecode()->add(elseInsn);
-    lEnd.bind(bytecode()->length());
+    bytecode()->bind(lJump);
+    bytecode()->add(BC_POP);
+    bytecode()->add(BC_POP);
+    bytecode()->add(BC_ILOAD0);
+    bytecode()->bind(lEnd);
+}
+
+void BytecodeGenerator::addCastToBool(VarType type) {
+    switch(type) {
+    case VT_INT:
+        addCastIntToBool();
+        break;
+    case VT_DOUBLE:
+        bytecode()->add(BC_DLOAD0);
+        bytecode()->add(BC_DCMP);
+        addCastIntToBool();
+        break;
+    case VT_STRING:
+        bytecode()->add(BC_S2I);
+        addCastIntToBool();
+    default:
+        throw TranslationException();
+        break;
+    }
+}
+
+void BytecodeGenerator::addCompareWith0andReplace(Instruction ifInsn,
+                                                  Instruction trueInsn,
+                                                  Instruction falseInsn) {
+    Label lTrue(bytecode());
+    Label lEnd(bytecode());
+
+    bytecode()->add(BC_ILOAD0);
+    bytecode()->addBranch(ifInsn, lTrue);
+    bytecode()->add(BC_POP);
+    bytecode()->add(BC_POP);
+    bytecode()->add(falseInsn);
+    bytecode()->addBranch(BC_JA, lEnd);
+    bytecode()->bind(lTrue);
+    bytecode()->add(BC_POP);
+    bytecode()->add(BC_POP);
+    bytecode()->add(trueInsn);
+    bytecode()->bind(lEnd);
 }
 
 void BytecodeGenerator::addNot(VarType type) {
-    assertNumber(type);
+    addCastToBool(type);
+    addCompareWith0andReplace(BC_IFICMPE, BC_ILOAD1, BC_ILOAD0);
+}
 
-    if (type == VT_DOUBLE) {
-        bytecode()->add(BC_DLOAD0);
+void BytecodeGenerator::addCompInsn(VarType type, Instruction insn) {
+    switch(type) {
+    case VT_INT:
+        bytecode()->add(BC_ICMP);
+        break;
+    case VT_DOUBLE:
         bytecode()->add(BC_DCMP);
+        break;
+    default:
+        throw TranslationException();
+        break;
     }
 
-    Label lElse(bytecode());
-    Label lEnd(bytecode());
-    bytecode()->add(BC_ILOAD0);
-    //if
-    bytecode()->add(BC_IFICMPE);
-    lElse.addRelocation(bytecode()->length());
-    //then
-    bytecode()->add(BC_ILOAD0);
-    lEnd.addRelocation(bytecode()->length());
-    //else
-    lElse.bind(bytecode()->length());
-    bytecode()->add(BC_ILOAD1);
-    //end if
-    lEnd.bind(bytecode()->length());
+    addCompareWith0andReplace(insn, BC_ILOAD1, BC_ILOAD0);
 }
 
 //  +  -  !
 void BytecodeGenerator::visitUnaryOpNode(UnaryOpNode *node) {
     AstNode* operand = node->operand();
     operand->visit(this);
-    VarType operandType = _typeInferencer.resolveType(operand);
+    VarType operandType = resolveType(operand);
 
     TokenKind unOp = node->kind();
     switch(unOp) {
     case tADD:
-        assertNumber(operandType);
+        checkNumber(operandType);
         break;
     case tSUB:
         addNeg(operandType);
@@ -179,61 +228,37 @@ void BytecodeGenerator::visitUnaryOpNode(UnaryOpNode *node) {
     case tNOT:
         addNot(operandType);
         break;
+    default:
+        throw TranslationException();
+        break;
     }
 }
 
-void BytecodeGenerator::addGE(VarType type) {
-    assertNumber(type);
-
-    Label lElse(bytecode());
-    Label lEndIf(bytecode());
-    bytecode()->add(BC_SWAP);
-    bytecode()->add(type == VT_DOUBLE ? BC_DCMP ? BC_ICMP);
-    bytecode()->add(BC_ILOAD0);
-    bytecode()->addBranch(BC_IFICMPG, lElse);
-    bytecode()->add(BC_ILOAD1);
-    bytecode()->addBranch(BC_JA, lEndIf);
-    lElse.bind(bytecode()->length());
-    bytecode()->add(BC_ILOAD0);
-    lEndIf.bind(bytecode()->length());
+void BytecodeGenerator::addBitOpInsn(VarType type, Instruction insn) {
+    if (type == VT_INT) {
+        bytecode()->add(insn);
+        return;
+    }
+    throw TranslationException();
 }
 
-void BytecodeGenerator::addGT(VarType type) {
-    assertNumber(type);
-
-    Label lElse(bytecode());
-    Label lEndIf(bytecode());
-    bytecode()->add(BC_SWAP);
-    bytecode()->add(type == VT_DOUBLE ? BC_DCMP ? BC_ICMP);
-    bytecode()->add(BC_ILOAD0);
-    bytecode()->addBranch(BC_IFICMPGE, lElse);
-    bytecode()->add(BC_ILOAD1);
-    bytecode()->addBranch(BC_JA, lEndIf);
-    lElse.bind(bytecode()->length());
-    bytecode()->add(BC_ILOAD0);
-    lEndIf.bind(bytecode()->length());
+void BytecodeGenerator::addAAND(VarType type) {
+    addBitOpInsn(type, BC_IAAND);
 }
 
-void BytecodeGenerator::addIf0(Instruction zeroInsn,
-                               Instruction ifInsn,
-                               Instruction thenInsn,
-                               Instruction elseInsn) {
-    Label lElse(bytecode());
-    Label lEnd(bytecode());
-
-    bytecode()->add(zeroInsn);
-    bytecode()->addBranch(ifInsn, lElse);
-    bytecode()->add(thenInsn);
-    bytecode()->addBranch(BC_JA, lEnd);
-    lElse.bind(bytecode()->length());
-    bytecode()->add(elseInsn);
-    lEnd.bind(bytecode()->length());
+void BytecodeGenerator::addAOR(VarType type) {
+    addBitOpInsn(type, BC_IAOR);
 }
 
-void BytecodeGenerator::addCompInsn(Instruction ifInsn, VarType type) {
+void BytecodeGenerator::addAXOR(VarType type) {
+    addBitOpInsn(type, BC_IAXOR);
+}
+
+void BytecodeGenerator::addCastTwoLastToBool(VarType type) {
+    addCastToBool(type);
     bytecode()->add(BC_SWAP);
-    addOp(type, BC_ICMP, BC_DCMP);
-    addIf0(ifInsn, BC_ILOAD0, BC_ILOAD0, BC_ILOAD1);
+    addCastToBool(type);
+    bytecode()->add(BC_SWAP);
 }
 
 void BytecodeGenerator::visitBinaryOpNode(BinaryOpNode *node)
@@ -242,11 +267,11 @@ void BytecodeGenerator::visitBinaryOpNode(BinaryOpNode *node)
     AstNode* rightOperand = node->right();
     TokenKind binOp = node->kind();
 
-    VarType leftType = _typeInferencer.resolveType(leftOperand);
+    VarType leftType = resolveType(leftOperand);
     checkNumber(leftType);
-    VarType rightType = _typeInferencer.resolveType(rightOperand);
+    VarType rightType = resolveType(rightOperand);
     checkNumber(rightType);
-    VarType commonType = _typeInferencer.commonType(leftType, rightType);
+    VarType commonType = getCommonType(leftType, rightType);
 
     leftOperand->visit(this);
     addCast(leftType, commonType);
@@ -254,27 +279,28 @@ void BytecodeGenerator::visitBinaryOpNode(BinaryOpNode *node)
     addCast(rightType, commonType);
     
     switch (binOp) {
-        //compare
+    //compare
     case tEQ:
-        addCompInsn(BC_IFICMPE, commonType);
+        addCompInsn(commonType, BC_IFICMPE);
         break;
     case tNEQ:
-        addCompInsn(BC_IFICMPNE, commonType);
+        addCompInsn(commonType, BC_IFICMPNE);
         break;
     case tGE:
-        addCompInsn(BC_IFICMPGE, commonType);
+        addCompInsn(commonType, BC_IFICMPGE);
         break;
     case tLE:
-        addCompInsn(BC_IFICMPLE, commonType);
+        addCompInsn(commonType, BC_IFICMPLE);
         break;
     case tGT:
-        addCompInsn(BC_IFICMPG, commonType);
+        addCompInsn(commonType, BC_IFICMPG);
         break;
     case tLT:
-        addCompInsn(BC_IFICMPL, commonType);
+        addCompInsn(commonType, BC_IFICMPL);
         break;
         //logic
     case tOR:
+        addCastTwoLastToBool(commonType);
         addAdd(commonType);
         break;
     case tAND:
@@ -282,38 +308,31 @@ void BytecodeGenerator::visitBinaryOpNode(BinaryOpNode *node)
         break;
         //bit
     case tAOR:
-        if (commonType != VT_INT) {
-            throw TranslationException();
-        }
-        bytecode()->add(BC_IAOR);
+        addAOR(commonType);
         break;
     case tAAND:
-        if (commonType != VT_INT) {
-            throw TranslationException();
-        }
-        bytecode()->add(BC_IAAND);
+        addAAND(commonType);
         break;
     case tAXOR:
-        if (commonType != VT_INT) {
-            throw TranslationException();
-        }
-        bytecode()->add(BC_IAXOR);
+        addAXOR(commonType);
         break;
         //ariphm
     case tADD:
-        addAdd();
+        addAdd(commonType);
         break;
     case tSUB:
-        addSub();
+        addSub(commonType);
         break;
     case tMUL:
-        addMul();
+        addMul(commonType);
         break;
     case tDIV:
-        addDiv();
+        addDiv(commonType);
         break;
     case tMOD:
-        addMod();
+        addMod(commonType);
+        break;
+    case tRANGE:
         break;
     default:
         throw TranslationException();
@@ -323,14 +342,14 @@ void BytecodeGenerator::visitBinaryOpNode(BinaryOpNode *node)
 
 void BytecodeGenerator::visitIntLiteralNode(IntLiteralNode *node)
 {
-    _bytecode.add(BC_ILOAD);
-    _bytecode.addInt64(node->literal());
+    bytecode()->add(BC_ILOAD);
+    bytecode()->addInt64(node->literal());
 }
 
 void BytecodeGenerator::visitDoubleLiteralNode(DoubleLiteralNode *node)
 {
-    _bytecode.add(BC_DLOAD);
-    _bytecode.addDouble(node->literal());
+    bytecode()->add(BC_DLOAD);
+    bytecode()->addDouble(node->literal());
 }
 
 uint16_t BytecodeGenerator::registerConstant(string const& constant) {
@@ -343,8 +362,8 @@ uint16_t BytecodeGenerator::registerConstant(string const& constant) {
 
 void BytecodeGenerator::visitStringLiteralNode(StringLiteralNode *node) {
     uint16_t id = registerConstant(node->literal());
-    bytecode().add(BC_SLOAD);
-    bytecode().addInt16(id);
+    bytecode()->add(BC_SLOAD);
+    bytecode()->addInt16(id);
 }
 
 void BytecodeGenerator::loadValueFromVar(uint16_t scopeId,
@@ -352,20 +371,20 @@ void BytecodeGenerator::loadValueFromVar(uint16_t scopeId,
                                          VarType varType) {
     switch(varType) {
     case VT_INT:
-        bytecode().add(BC_LOADCTXIVAR);
+        bytecode()->add(BC_LOADCTXIVAR);
         break;
     case VT_DOUBLE:
-        bytecode().add(BC_LOADCTXDVAR);
+        bytecode()->add(BC_LOADCTXDVAR);
         break;
     case VT_STRING:
-        bytecode().add(BC_LOADCTXSVAR);
+        bytecode()->add(BC_LOADCTXSVAR);
     default:
         throw TranslationException();
         break;
     }
 
-    bytecode().addInt16(scopeId);
-    bytecode().addInt16(varId);
+    bytecode()->addInt16(scopeId);
+    bytecode()->addInt16(varId);
 }
 
 void BytecodeGenerator::storeValueToVar(uint16_t scopeId,
@@ -373,34 +392,34 @@ void BytecodeGenerator::storeValueToVar(uint16_t scopeId,
                                         VarType varType) {
     switch(varType) {
     case VT_INT:
-        bytecode().add(BC_STORECTXIVAR);
+        bytecode()->add(BC_STORECTXIVAR);
         break;
     case VT_DOUBLE:
-        bytecode().add(BC_STORECTXDVAR);
+        bytecode()->add(BC_STORECTXDVAR);
         break;
     case VT_STRING:
-        bytecode().add(BC_STORECTXSVAR);
+        bytecode()->add(BC_STORECTXSVAR);
     default:
-        assert(false);
+        throw TranslationException();
         break;
     }
 
-    bytecode().addInt16(scopeId);
-    bytecode().addInt16(varId);
+    bytecode()->addInt16(scopeId);
+    bytecode()->addInt16(varId);
 }
 
 //  =  +=  -=
 void BytecodeGenerator::visitStoreNode(StoreNode *node) {
     TokenKind op = node->op();
-    AstVar* var = node->var();
+    const AstVar* var = node->var();
     VarType varType = var->type();
 
     uint16_t scopeId = currentScopeId();
-    uint16_t varId = varId(scopeId, var->name());
+    uint16_t varId = getVarId(scopeId, var->name());
 
     AstNode* value = node->value();
     value->visit(this); // after this operation on TOS lies value which i must store
-    VarType valueType = _typeInferencer.resolveType(value);
+    VarType valueType = resolveType(value);
     addCast(valueType, varType);
 
     if (op == tINCRSET) {
@@ -417,9 +436,9 @@ void BytecodeGenerator::visitStoreNode(StoreNode *node) {
 
 void BytecodeGenerator::visitLoadNode(LoadNode *node)
 {
-    AstVar* var = node->var();
+    const AstVar* var = node->var();
     uint16_t scopeId = currentScopeId();
-    uint16_t varId = varId(scopeId, var->name());
+    uint16_t varId = getVarId(scopeId, var->name());
     loadValueFromVar(scopeId, varId, var->type());
 }
 
@@ -445,25 +464,26 @@ void BytecodeGenerator::visitIfNode(IfNode *node) {
 
     AstNode* ifExpr = node->ifExpr();
     ifExpr->visit(this);
+    VarType ifExprType = resolveType(ifExpr);
+    addCastToBool(ifExprType);
 
     Label lElse(bytecode());
     Label lEndIf(bytecode());
+
     bytecode()->add(BC_ILOAD0);
-
-    //jump if double == 0 -> false
     bytecode()->addBranch(BC_IFICMPE, lElse);
-
+    bytecode()->add(BC_POP);
     BlockNode* thenBlock = node->thenBlock();
     thenBlock->visit(this);
     bytecode()->addBranch(BC_JA, lEndIf);
 
-    lElse.bind(bytecode()->length());
+    bytecode()->bind(lElse);
+    bytecode()->add(BC_POP);
     BlockNode* elseBlock = node->elseBlock();
     if (elseBlock) {
         thenBlock->visit(this);
     }
-
-    lEndIf.bind(bytecode()->length());
+    bytecode()->bind(lEndIf);
 }
 
 void BytecodeGenerator::visitWhileNode(WhileNode *node) {
@@ -473,33 +493,78 @@ void BytecodeGenerator::visitWhileNode(WhileNode *node) {
     Label lBegin(bytecode());
     Label lEnd(bytecode());
 
-    lBegin.bind(bytecode()->length());
+    bytecode()->bind(lBegin);
     whileExpr->visit(this);
     bytecode()->add(BC_ILOAD0);
     bytecode()->addBranch(BC_IFICMPE, lEnd);
+
+    bytecode()->add(BC_POP);
     whileBlock->visit(this);
+
     bytecode()->addBranch(BC_JA, lBegin);
-    lEnd.bind(bytecode()->length());
+    bytecode()->bind(lEnd);
+    bytecode()->add(BC_POP);
+}
+
+uint16_t BytecodeGenerator::getVarId(uint16_t scopeId, string const& name) {
+    VarMap& vars = _vars[scopeId];
+    for (VarMap::iterator varIt = vars.begin(); varIt != vars.end(); ++varIt) {
+        const string& varName = varIt->first->name();
+        if (varName == name) {
+            return varIt->second;
+        }
+    }
+
+    throw TranslationException();
+}
+
+std::pair<uint16_t, uint16_t> BytecodeGenerator::findScopeVarId(Scope* scope, const string& varName) {
+    while (scope != 0) {
+        uint16_t scopeId = _scopes[scope];
+        Scope::VarIterator varIt(scope);
+        while(varIt.hasNext()) {
+            AstVar* var = varIt.next();
+            if (var->name() == varName) {
+                uint16_t varId = getVarId(scopeId, varName);
+                return std::pair<uint16_t, uint16_t>(scopeId, varId);
+            }
+        }
+        scope = scope->parent();
+    }
+
+    throw TranslationException();
+}
+
+std::pair<uint16_t, uint16_t> BytecodeGenerator::findScopeVarId(const string &name) {
+    return findScopeVarId(currentScope(), name);
 }
 
 void BytecodeGenerator::visitForNode(ForNode *node) {
-    AstNode* inExpr = node->inExpr();
-    inExpr->visit(this); // left on preTOS, right on TOS,
-    VarType rangeType = _typeInferencer.resolveType(inExpr);
-
-    AstVar* inVar = node->var();
+    const AstVar* inVar = node->var();
     VarType inVarType = inVar->type();
     string inVarName = inVar->name();
 
+    AstNode* inExpr = node->inExpr();
+    inExpr->visit(this); // left on preTOS, right on TOS,
+    VarType rangeType = resolveType(inExpr);
+    addCast(rangeType, inVarType);
+    bytecode()->add(BC_SWAP);
+    addCast(rangeType, inVarType); // left on TOS, right below
+
     //TODO:add casts
     BlockNode* forBlock = node->body();
-    uint16_t blockScopeId = registerScope(forBlock->scope());
-    uint16_t inVarId = getVarId(blockScopeId, inVarName);
+    Scope* forScope = forBlock->scope();
+    uint16_t blockScopeId = registerScope(forScope);
+
+    std::pair<uint16_t, uint16_t> inScopeVarId = findScopeVarId(forScope, inVarName);
+    uint16_t scopeId = inScopeVarId.first;
+    uint16_t inVarId = inScopeVarId.second;
+
     uint16_t leftRangeId = registerVar(blockScopeId, new AstVar("<left>", VT_INT, currentScope()));
     uint16_t rightRangeId = registerVar(blockScopeId, new AstVar("<right>", VT_INT, currentScope()));
 
-    storeValueToVar(blockScopeId, rightRangeId, inVarType);
     storeValueToVar(blockScopeId, leftRangeId, inVarType);
+    storeValueToVar(blockScopeId, rightRangeId, inVarType);
 
     Label forBegin(bytecode());
     Label forEnd(bytecode());
@@ -507,10 +572,10 @@ void BytecodeGenerator::visitForNode(ForNode *node) {
     forBegin.bind(bytecode()->length());
 
     loadValueFromVar(blockScopeId, leftRangeId, inVarType);
-    storeValueToVar(blockScopeId, inVarId, inVarType);
+    storeValueToVar(scopeId, inVarId, inVarType);
 
     loadValueFromVar(blockScopeId, rightRangeId, inVarType);
-    loadValueFromVar(blockScopeId, inVarId, inVarType);
+    loadValueFromVar(scopeId, inVarId, inVarType);
 
     bytecode()->addBranch(BC_IFICMPG, forEnd);
 
@@ -525,14 +590,18 @@ void BytecodeGenerator::visitForNode(ForNode *node) {
     forEnd.bind(bytecode()->length());
 }
 
+uint16_t BytecodeGenerator::translatedFunctionId() {
+    return _bcFunctionStack.back();
+}
+
 void BytecodeGenerator::visitReturnNode(ReturnNode *node) {
-    uint16_t tFunctionId = currentTranslatedFunction();
-    TranslatedFunction tFunction = getTranslatedFunctionById(tFunctionId);
-    VarType targetReturnType = tFunction.returnType();
+    uint16_t id = translatedFunctionId();
+    BytecodeFunction* bcFunction = _bcFunctions[id];
+    VarType targetReturnType = bcFunction->returnType();
 
     AstNode* returnExpr = node->returnExpr();
     returnExpr->visit(this);
-    VarType returnExprType = _typeInferencer.resolveType(returnExpr);
+    VarType returnExprType = resolveType(returnExpr);
     addCast(returnExprType, targetReturnType);
 }
 
@@ -557,7 +626,7 @@ void BytecodeGenerator::visitPrintNode(PrintNode *node) {
     for (uint32_t i = 0; i < node->operands(); ++i) {
         AstNode* operand = node->operandAt(i);
         operand->visit(this);
-        VarType operandType = _typeInferencer.resolveType(operand);
+        VarType operandType = resolveType(operand);
         addPrint(operandType);
     }
 }
@@ -600,7 +669,7 @@ void BytecodeGenerator::visitCallNode(CallNode *node) {
     for (int i = node->parametersNumber() - 1; i > -1; --i) {
         AstNode* arg = node->parameterAt(i);
         arg->visit(this);
-        VarType argType = _typeInferencer.resolveType(arg);
+        VarType argType = resolveType(arg);
         VarType paramType = function->parameterType(i);
         addCast(argType, paramType);
     }
@@ -663,7 +732,7 @@ uint16_t BytecodeGenerator::registerFunction(AstFunction* astFunction) {
 uint16_t BytecodeGenerator::registerVar(uint16_t scopeId, AstVar* var) {
     VarMap& vars = _vars[scopeId];
     uint16_t id = vars.size();
-    vars[var->name()] = id;
+    vars[var] = id;
 
     return id;
 }
