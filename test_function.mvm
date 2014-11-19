@@ -1,3 +1,11 @@
+string s;
+string s1;
+
+s = 'Hello';
+function int strlen(string s) native 'strlen';
+
+strlen(s)
+
 function int a(int p1, int p2)
 {
     int x;
@@ -16,7 +24,9 @@ function int a(int p1, int p2)
     return y;
 }
 
-function int b()
+function int b(int p)
 {
+    int  p = 1.0;
+
     return 1;
 }

@@ -24,7 +24,7 @@ Status* AstPrinter::translate(const string& program, Code* *code) {
     AstPrinterVisitor printer;
     printer.visitFunctionNode(top->node());
 
-    return new Status();
+    return Status::Ok();
 }
 
 void AstPrinterVisitor::visitBinaryOpNode(BinaryOpNode* node) {

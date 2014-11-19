@@ -26,7 +26,8 @@ SOURCES += main.cpp \
     libs/AsmJit/Platform.cpp \
     libs/AsmJit/Util.cpp \
     2/BytecodeGenerator.cpp \
-    2/TypeInferencer.cpp
+    2/TypeInferencer.cpp \
+    students/2014/novokreschenov/1/ast_printer.cpp
 
 HEADERS += \
     vm/parser.h \
@@ -54,8 +55,9 @@ HEADERS += \
     libs/AsmJit/Platform.h \
     libs/AsmJit/Util_p.h \
     libs/AsmJit/Util.h \
-    2/BytecodeGenerator.h \
-    2/TypeInferencer.h
+#    2/BytecodeGenerator.h \
+#    2/TypeInferencer.h \
+    students/2014/novokreschenov/1/ast_printer.h
 
 INCLUDEPATH += vm \
                include \

@@ -9,12 +9,56 @@ TypeInferencer::TypeInferencer() {
 TypeInferencer::~TypeInferencer() {
 }
 
+VarType TypeInferencer::resolveType(AstNode *node) {
+    node->visit(this);
+    return _type;
+}
+
 VarType TypeInferencer::resolveType(const VarType v1, const VarType v2) const {
     if (v1 == VT_DOUBLE || v2 == VT_DOUBLE) {
         return VT_DOUBLE;
     }
 
     return VT_INT;
+}
+
+VarType TypeInferencer::commonTypeForBinOp(const TokenKind binOp, const VarType left, const VarType right) const
+{
+    //  =  +=  -=
+    if (isAssignmentOp(binOp)) {
+        return left;
+    }
+
+    //  ==  !=  !  >  >=  <  <=  ||  &&
+    else if (isCompareOp(binOp)) {
+        return commonType(left, right);
+    }
+
+    //  |  &  ^
+    else if (isBitOp(binOp)) {
+        return VT_INT;
+    }
+
+    //  +  -  *  /  %
+    else if (isAriphmOp(binOp)) {
+        return commonType(left, right);
+    }
+
+    else if (binOp == tMOD) {
+        return VT_INT;
+    }
+}
+
+VarType TypeInferencer::commonType(const VarType v1, const VarType v2) const
+{
+    if (v1 == VT_DOUBLE || v2 == VT_DOUBLE) {
+        return VT_DOUBLE;
+    }
+    else if (v1 == VT_INT || v2 == VT_INT) {
+        return VT_INT;
+    }
+
+    return VT_STRING;
 }
 
 void TypeInferencer::setScope(Scope *scope)
@@ -34,10 +78,11 @@ void TypeInferencer::visitUnaryOpNode(UnaryOpNode *node) {
  * logic operator ??
 */
 void TypeInferencer::visitBinaryOpNode(BinaryOpNode *node) {
-    node->left()->visit(this);
+    node->left()->visit();
     VarType leftType = inferredType();
     node->right()->visit(this);
     VarType rightType = inferredType();
+
     _type = resolveType(leftType, rightType);
 
     switch(node->kind()) {
