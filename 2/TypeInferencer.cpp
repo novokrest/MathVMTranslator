@@ -14,15 +14,16 @@ VarType TypeInferencer::resolveType(AstNode *node) {
     return _type;
 }
 
-VarType TypeInferencer::resolveType(const VarType v1, const VarType v2) const {
-    if (v1 == VT_DOUBLE || v2 == VT_DOUBLE) {
-        return VT_DOUBLE;
+bool TypeInferencer::find(TokenKind op, TokenKind ops[], int count) {
+    for (int i = 0; i < count; ++i) {
+        if (ops[i] == op) {
+            return true;
+        }
     }
-
-    return VT_INT;
+    return false;
 }
 
-VarType TypeInferencer::commonTypeForBinOp(const TokenKind binOp, const VarType left, const VarType right) const
+VarType TypeInferencer::commonTypeForBinOp(TokenKind binOp, VarType left, VarType right) const
 {
     //  =  +=  -=
     if (isAssignmentOp(binOp)) {
@@ -39,11 +40,12 @@ VarType TypeInferencer::commonTypeForBinOp(const TokenKind binOp, const VarType 
         return VT_INT;
     }
 
-    //  +  -  *  /  %
+    //  +  -  *  /
     else if (isAriphmOp(binOp)) {
         return commonType(left, right);
     }
 
+    //  %
     else if (binOp == tMOD) {
         return VT_INT;
     }
@@ -78,12 +80,12 @@ void TypeInferencer::visitUnaryOpNode(UnaryOpNode *node) {
  * logic operator ??
 */
 void TypeInferencer::visitBinaryOpNode(BinaryOpNode *node) {
-    node->left()->visit();
+    node->left()->visit(this);
     VarType leftType = inferredType();
     node->right()->visit(this);
     VarType rightType = inferredType();
 
-    _type = resolveType(leftType, rightType);
+    _type = commonType(leftType, rightType);
 
     switch(node->kind()) {
     case tADD:

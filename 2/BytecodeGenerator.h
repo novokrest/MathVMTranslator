@@ -9,8 +9,26 @@ namespace mathvm {
 
 class TypeInferencer : public AstVisitor
 {
+    static const int ASSIGN_COUNT = 3;
+    static const int COMPARE_COUNT = 9;
+    static const int BIT_COUNT = 3;
+    static const int ARIPHM_COUNT = 4;
+
+    static const TokenKind assignOps[ASSIGN_COUNT]   = {tASSIGN, tINCRSET, tDECRSET};
+    static const TokenKind compareOps[COMPARE_COUNT] = {tEQ, tNEQ, tNOT, tLT, tLE, tGT, tGE, tOR, tAND};
+    static const TokenKind bitOps[BIT_COUNT]         = {tAOR, tAAND, tAXOR};
+    static const TokenKind ariphmOps[ARIPHM_COUNT]   = {tADD, tSUB, tMUL, tDIV};
+
     VarType _type;
     Scope* _scope;
+
+    VarType commonTypeForBinOp(TokenKind binOp, VarType left, VarType right) const;
+
+    bool find(TokenKind op, TokenKind ops[], int count);
+    bool isAssignmentOp(TokenKind binOp);
+    bool isCompareOp(TokenKind binOp);
+    bool isBitOp(TokenKind binOp);
+    bool isAriphmOp(TokenKind binOp);
 
 public:
     TypeInferencer();
