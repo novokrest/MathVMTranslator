@@ -3,7 +3,7 @@
 
 #include "mathvm.h"
 #include "visitors.h"
-
+#include "interpretercode.h"
 
 namespace mathvm {
 
@@ -14,17 +14,17 @@ class TypeInferencer : public AstVisitor
     static const int BIT_COUNT = 3;
     static const int ARIPHM_COUNT = 4;
 
-    static const TokenKind assignOps[ASSIGN_COUNT]   = {tASSIGN, tINCRSET, tDECRSET};
-    static const TokenKind compareOps[COMPARE_COUNT] = {tEQ, tNEQ, tNOT, tLT, tLE, tGT, tGE, tOR, tAND};
-    static const TokenKind bitOps[BIT_COUNT]         = {tAOR, tAAND, tAXOR};
-    static const TokenKind ariphmOps[ARIPHM_COUNT]   = {tADD, tSUB, tMUL, tDIV};
+    static const TokenKind assignOps[];//   = {tASSIGN, tINCRSET, tDECRSET};
+    static const TokenKind compareOps[];// = {tEQ, tNEQ, tNOT, tLT, tLE, tGT, tGE, tOR, tAND};
+    static const TokenKind bitOps[];//         = {tAOR, tAAND, tAXOR};
+    static const TokenKind ariphmOps[];//   = {tADD, tSUB, tMUL, tDIV};
 
     VarType _type;
     Scope* _scope;
 
     VarType commonTypeForBinOp(TokenKind binOp, VarType left, VarType right) const;
 
-    bool find(TokenKind op, TokenKind ops[], int count);
+    static bool find(TokenKind op, const TokenKind ops[], int count);
     bool isAssignmentOp(TokenKind binOp);
     bool isCompareOp(TokenKind binOp);
     bool isBitOp(TokenKind binOp);
@@ -89,6 +89,7 @@ class BytecodeGenerator : public AstVisitor
     typedef std::map<uint16_t, TranslatedFunction*> FunctionIdMap;
 
     typedef std::vector<string> vstr;
+    typedef std::vector<BytecodeFunction*> BytecodeFunctionVec;
     typedef std::map<Scope*, uint16_t> ScopeMap;
     typedef std::map<AstVar*, uint16_t> VarMap;
     typedef std::map<uint16_t, VarMap> ScopeVarMap;
@@ -96,6 +97,7 @@ class BytecodeGenerator : public AstVisitor
     typedef std::map<AstFunction*, uint16_t> AstFunctionMap;
 
 
+    typedef std::vector<NativeFunctionDescriptor> NativeVec;
     typedef std::map<std::string, uint16_t> NativeMap;
     typedef std::map<std::string, uint16_t> ConstantMap;
 
@@ -105,12 +107,12 @@ class BytecodeGenerator : public AstVisitor
     ScopeVarMap _vars;
 
     AstFunctionMap _astFunctions;
-    std::vector<BytecodeFunction*> _bcFunctions;
+    BytecodeFunctionVec _bcFunctions;
     std::vector<uint16_t> _bcFunctionStack;
     std::vector<Bytecode*> _bytecodeStack;
 
     NativeMap _nativeById;
-    vector<NativeFunctionDescriptor> _natives;
+    NativeVec _natives;
 
     ConstantMap _constantById;
     std::vector<string> _constants;
@@ -148,6 +150,7 @@ class BytecodeGenerator : public AstVisitor
     void addAXOR(VarType type);
 
     void addPrint(VarType type);
+    void addReturn();
 
     uint16_t translatedFunctionId();
     AstFunction* getFunction(Scope* scope, const string& name);
@@ -161,10 +164,13 @@ class BytecodeGenerator : public AstVisitor
     std::pair<uint16_t, uint16_t> findScopeVarId(Scope* scope, string const& varName);
     std::pair<uint16_t, uint16_t> findScopeVarId(string const& varName);
 
+    InterpreterCodeImpl* _code;
+
 public:
     BytecodeGenerator();
     virtual ~BytecodeGenerator();
 
+    InterpreterCodeImpl* makeBytecode(AstFunction* top);
     void visitAstFunction(AstFunction* astFunction);
 
 #define VISITOR_FUNCTION(type, name) \
@@ -173,6 +179,7 @@ public:
     FOR_NODES(VISITOR_FUNCTION)
 #undef VISITOR_FUNCTION
 };
+
 
 class TranslationException: public exception
 {

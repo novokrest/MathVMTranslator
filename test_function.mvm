@@ -14,6 +14,8 @@ function int a(int p1, int p2)
     y = x + 1;
     int z = 0;
 
+    int i;
+
     for (i in 3..4)
     {
         int a;

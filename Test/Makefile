@@ -15,10 +15,10 @@ CXX           = g++
 DEFINES       = -DQT_QML_DEBUG -DQT_DECLARATIVE_DEBUG
 CFLAGS        = -m64 -pipe -g -Wall -W -fPIE $(DEFINES)
 CXXFLAGS      = -m64 -pipe -g -Wall -W -fPIE $(DEFINES)
-INCPATH       = -I/usr/lib/x86_64-linux-gnu/qt5/mkspecs/linux-g++-64 -I.
+INCPATH       = -I/usr/lib/x86_64-linux-gnu/qt5/mkspecs/linux-g++-64 -I. -I../libs/asmjit/src
 LINK          = g++
 LFLAGS        = -m64
-LIBS          = $(SUBLIBS)  
+LIBS          = $(SUBLIBS) -ldl -LMyLibrary 
 AR            = ar cqs
 RANLIB        = 
 QMAKE         = /usr/lib/x86_64-linux-gnu/qt5/bin/qmake
@@ -45,8 +45,58 @@ OBJECTS_DIR   = ./
 
 ####### Files
 
-SOURCES       = main.cpp 
-OBJECTS       = main.o
+SOURCES       = main.cpp \
+		../libs/asmjit/src/asmjit/base/assembler.cpp \
+		../libs/asmjit/src/asmjit/base/codegen.cpp \
+		../libs/asmjit/src/asmjit/base/compiler.cpp \
+		../libs/asmjit/src/asmjit/base/constpool.cpp \
+		../libs/asmjit/src/asmjit/base/containers.cpp \
+		../libs/asmjit/src/asmjit/base/context.cpp \
+		../libs/asmjit/src/asmjit/base/cpuinfo.cpp \
+		../libs/asmjit/src/asmjit/base/cputicks.cpp \
+		../libs/asmjit/src/asmjit/base/error.cpp \
+		../libs/asmjit/src/asmjit/base/globals.cpp \
+		../libs/asmjit/src/asmjit/base/intutil.cpp \
+		../libs/asmjit/src/asmjit/base/logger.cpp \
+		../libs/asmjit/src/asmjit/base/operand.cpp \
+		../libs/asmjit/src/asmjit/base/runtime.cpp \
+		../libs/asmjit/src/asmjit/base/string.cpp \
+		../libs/asmjit/src/asmjit/base/vmem.cpp \
+		../libs/asmjit/src/asmjit/base/zone.cpp \
+		../libs/asmjit/src/asmjit/x86/x86assembler.cpp \
+		../libs/asmjit/src/asmjit/x86/x86compiler.cpp \
+		../libs/asmjit/src/asmjit/x86/x86context.cpp \
+		../libs/asmjit/src/asmjit/x86/x86cpuinfo.cpp \
+		../libs/asmjit/src/asmjit/x86/x86inst.cpp \
+		../libs/asmjit/src/asmjit/x86/x86operand_regs.cpp \
+		../libs/asmjit/src/asmjit/x86/x86operand.cpp \
+		../libs/asmjit/src/asmjit/x86/x86scheduler.cpp 
+OBJECTS       = main.o \
+		assembler.o \
+		codegen.o \
+		compiler.o \
+		constpool.o \
+		containers.o \
+		context.o \
+		cpuinfo.o \
+		cputicks.o \
+		error.o \
+		globals.o \
+		intutil.o \
+		logger.o \
+		operand.o \
+		runtime.o \
+		string.o \
+		vmem.o \
+		zone.o \
+		x86assembler.o \
+		x86compiler.o \
+		x86context.o \
+		x86cpuinfo.o \
+		x86inst.o \
+		x86operand_regs.o \
+		x86operand.o \
+		x86scheduler.o
 DIST          = /usr/lib/x86_64-linux-gnu/qt5/mkspecs/features/spec_pre.prf \
 		/usr/lib/x86_64-linux-gnu/qt5/mkspecs/common/shell-unix.conf \
 		/usr/lib/x86_64-linux-gnu/qt5/mkspecs/common/unix.conf \
@@ -281,8 +331,468 @@ compiler_clean:
 
 ####### Compile
 
-main.o: main.cpp 
+main.o: main.cpp ../libs/asmjit/src/asmjit/base.h \
+		../libs/asmjit/src/asmjit/build.h \
+		../libs/asmjit/src/asmjit/config.h \
+		../libs/asmjit/src/asmjit/test/broken.h \
+		../libs/asmjit/src/asmjit/base/assembler.h \
+		../libs/asmjit/src/asmjit/base/codegen.h \
+		../libs/asmjit/src/asmjit/base/error.h \
+		../libs/asmjit/src/asmjit/apibegin.h \
+		../libs/asmjit/src/asmjit/base/globals.h \
+		../libs/asmjit/src/asmjit/apiend.h \
+		../libs/asmjit/src/asmjit/base/logger.h \
+		../libs/asmjit/src/asmjit/base/string.h \
+		../libs/asmjit/src/asmjit/base/runtime.h \
+		../libs/asmjit/src/asmjit/base/vmem.h \
+		../libs/asmjit/src/asmjit/base/lock.h \
+		../libs/asmjit/src/asmjit/base/zone.h \
+		../libs/asmjit/src/asmjit/base/containers.h \
+		../libs/asmjit/src/asmjit/base/operand.h \
+		../libs/asmjit/src/asmjit/base/intutil.h \
+		../libs/asmjit/src/asmjit/base/compiler.h \
+		../libs/asmjit/src/asmjit/base/constpool.h \
+		../libs/asmjit/src/asmjit/base/cpuinfo.h \
+		../libs/asmjit/src/asmjit/base/cputicks.h \
+		../libs/asmjit/src/asmjit/base/vectypes.h \
+		../libs/asmjit/src/asmjit/asmjit.h \
+		../libs/asmjit/src/asmjit/x86.h \
+		../libs/asmjit/src/asmjit/x86/x86assembler.h \
+		../libs/asmjit/src/asmjit/x86/x86inst.h \
+		../libs/asmjit/src/asmjit/x86/x86operand.h \
+		../libs/asmjit/src/asmjit/x86/x86compiler.h \
+		../libs/asmjit/src/asmjit/x86/x86cpuinfo.h \
+		../libs/asmjit/src/asmjit/host.h
 	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o main.o main.cpp
+
+assembler.o: ../libs/asmjit/src/asmjit/base/assembler.cpp ../libs/asmjit/src/asmjit/base/assembler.h \
+		../libs/asmjit/src/asmjit/base/codegen.h \
+		../libs/asmjit/src/asmjit/base/error.h \
+		../libs/asmjit/src/asmjit/apibegin.h \
+		../libs/asmjit/src/asmjit/build.h \
+		../libs/asmjit/src/asmjit/config.h \
+		../libs/asmjit/src/asmjit/test/broken.h \
+		../libs/asmjit/src/asmjit/base/globals.h \
+		../libs/asmjit/src/asmjit/apiend.h \
+		../libs/asmjit/src/asmjit/base/logger.h \
+		../libs/asmjit/src/asmjit/base/string.h \
+		../libs/asmjit/src/asmjit/base/runtime.h \
+		../libs/asmjit/src/asmjit/base/vmem.h \
+		../libs/asmjit/src/asmjit/base/lock.h \
+		../libs/asmjit/src/asmjit/base/zone.h \
+		../libs/asmjit/src/asmjit/base/containers.h \
+		../libs/asmjit/src/asmjit/base/operand.h \
+		../libs/asmjit/src/asmjit/base/intutil.h
+	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o assembler.o ../libs/asmjit/src/asmjit/base/assembler.cpp
+
+codegen.o: ../libs/asmjit/src/asmjit/base/codegen.cpp ../libs/asmjit/src/asmjit/base/codegen.h \
+		../libs/asmjit/src/asmjit/base/error.h \
+		../libs/asmjit/src/asmjit/apibegin.h \
+		../libs/asmjit/src/asmjit/build.h \
+		../libs/asmjit/src/asmjit/config.h \
+		../libs/asmjit/src/asmjit/test/broken.h \
+		../libs/asmjit/src/asmjit/base/globals.h \
+		../libs/asmjit/src/asmjit/apiend.h \
+		../libs/asmjit/src/asmjit/base/logger.h \
+		../libs/asmjit/src/asmjit/base/string.h \
+		../libs/asmjit/src/asmjit/base/runtime.h \
+		../libs/asmjit/src/asmjit/base/vmem.h \
+		../libs/asmjit/src/asmjit/base/lock.h \
+		../libs/asmjit/src/asmjit/base/zone.h \
+		../libs/asmjit/src/asmjit/base/intutil.h
+	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o codegen.o ../libs/asmjit/src/asmjit/base/codegen.cpp
+
+compiler.o: ../libs/asmjit/src/asmjit/base/compiler.cpp ../libs/asmjit/src/asmjit/build.h \
+		../libs/asmjit/src/asmjit/config.h \
+		../libs/asmjit/src/asmjit/test/broken.h \
+		../libs/asmjit/src/asmjit/base/assembler.h \
+		../libs/asmjit/src/asmjit/base/codegen.h \
+		../libs/asmjit/src/asmjit/base/error.h \
+		../libs/asmjit/src/asmjit/apibegin.h \
+		../libs/asmjit/src/asmjit/base/globals.h \
+		../libs/asmjit/src/asmjit/apiend.h \
+		../libs/asmjit/src/asmjit/base/logger.h \
+		../libs/asmjit/src/asmjit/base/string.h \
+		../libs/asmjit/src/asmjit/base/runtime.h \
+		../libs/asmjit/src/asmjit/base/vmem.h \
+		../libs/asmjit/src/asmjit/base/lock.h \
+		../libs/asmjit/src/asmjit/base/zone.h \
+		../libs/asmjit/src/asmjit/base/containers.h \
+		../libs/asmjit/src/asmjit/base/operand.h \
+		../libs/asmjit/src/asmjit/base/intutil.h \
+		../libs/asmjit/src/asmjit/base/compiler.h \
+		../libs/asmjit/src/asmjit/base/constpool.h \
+		../libs/asmjit/src/asmjit/base/context_p.h \
+		../libs/asmjit/src/asmjit/base/cpuinfo.h
+	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o compiler.o ../libs/asmjit/src/asmjit/base/compiler.cpp
+
+constpool.o: ../libs/asmjit/src/asmjit/base/constpool.cpp ../libs/asmjit/src/asmjit/base/constpool.h \
+		../libs/asmjit/src/asmjit/base/error.h \
+		../libs/asmjit/src/asmjit/apibegin.h \
+		../libs/asmjit/src/asmjit/build.h \
+		../libs/asmjit/src/asmjit/config.h \
+		../libs/asmjit/src/asmjit/test/broken.h \
+		../libs/asmjit/src/asmjit/base/globals.h \
+		../libs/asmjit/src/asmjit/apiend.h \
+		../libs/asmjit/src/asmjit/base/zone.h \
+		../libs/asmjit/src/asmjit/base/intutil.h
+	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o constpool.o ../libs/asmjit/src/asmjit/base/constpool.cpp
+
+containers.o: ../libs/asmjit/src/asmjit/base/containers.cpp ../libs/asmjit/src/asmjit/base/containers.h \
+		../libs/asmjit/src/asmjit/base/error.h \
+		../libs/asmjit/src/asmjit/apibegin.h \
+		../libs/asmjit/src/asmjit/build.h \
+		../libs/asmjit/src/asmjit/config.h \
+		../libs/asmjit/src/asmjit/test/broken.h \
+		../libs/asmjit/src/asmjit/base/globals.h \
+		../libs/asmjit/src/asmjit/apiend.h \
+		../libs/asmjit/src/asmjit/base/intutil.h
+	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o containers.o ../libs/asmjit/src/asmjit/base/containers.cpp
+
+context.o: ../libs/asmjit/src/asmjit/base/context.cpp ../libs/asmjit/src/asmjit/build.h \
+		../libs/asmjit/src/asmjit/config.h \
+		../libs/asmjit/src/asmjit/test/broken.h \
+		../libs/asmjit/src/asmjit/base/context_p.h \
+		../libs/asmjit/src/asmjit/base/compiler.h \
+		../libs/asmjit/src/asmjit/base/assembler.h \
+		../libs/asmjit/src/asmjit/base/codegen.h \
+		../libs/asmjit/src/asmjit/base/error.h \
+		../libs/asmjit/src/asmjit/apibegin.h \
+		../libs/asmjit/src/asmjit/base/globals.h \
+		../libs/asmjit/src/asmjit/apiend.h \
+		../libs/asmjit/src/asmjit/base/logger.h \
+		../libs/asmjit/src/asmjit/base/string.h \
+		../libs/asmjit/src/asmjit/base/runtime.h \
+		../libs/asmjit/src/asmjit/base/vmem.h \
+		../libs/asmjit/src/asmjit/base/lock.h \
+		../libs/asmjit/src/asmjit/base/zone.h \
+		../libs/asmjit/src/asmjit/base/containers.h \
+		../libs/asmjit/src/asmjit/base/operand.h \
+		../libs/asmjit/src/asmjit/base/intutil.h \
+		../libs/asmjit/src/asmjit/base/constpool.h
+	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o context.o ../libs/asmjit/src/asmjit/base/context.cpp
+
+cpuinfo.o: ../libs/asmjit/src/asmjit/base/cpuinfo.cpp ../libs/asmjit/src/asmjit/base/cpuinfo.h \
+		../libs/asmjit/src/asmjit/base/globals.h \
+		../libs/asmjit/src/asmjit/build.h \
+		../libs/asmjit/src/asmjit/config.h \
+		../libs/asmjit/src/asmjit/test/broken.h \
+		../libs/asmjit/src/asmjit/apibegin.h \
+		../libs/asmjit/src/asmjit/apiend.h \
+		../libs/asmjit/src/asmjit/x86/x86cpuinfo.h
+	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o cpuinfo.o ../libs/asmjit/src/asmjit/base/cpuinfo.cpp
+
+cputicks.o: ../libs/asmjit/src/asmjit/base/cputicks.cpp ../libs/asmjit/src/asmjit/base/cputicks.h \
+		../libs/asmjit/src/asmjit/base/globals.h \
+		../libs/asmjit/src/asmjit/build.h \
+		../libs/asmjit/src/asmjit/config.h \
+		../libs/asmjit/src/asmjit/test/broken.h \
+		../libs/asmjit/src/asmjit/apibegin.h \
+		../libs/asmjit/src/asmjit/apiend.h
+	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o cputicks.o ../libs/asmjit/src/asmjit/base/cputicks.cpp
+
+error.o: ../libs/asmjit/src/asmjit/base/error.cpp ../libs/asmjit/src/asmjit/base/error.h \
+		../libs/asmjit/src/asmjit/apibegin.h \
+		../libs/asmjit/src/asmjit/build.h \
+		../libs/asmjit/src/asmjit/config.h \
+		../libs/asmjit/src/asmjit/test/broken.h \
+		../libs/asmjit/src/asmjit/base/globals.h \
+		../libs/asmjit/src/asmjit/apiend.h \
+		../libs/asmjit/src/asmjit/base/intutil.h
+	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o error.o ../libs/asmjit/src/asmjit/base/error.cpp
+
+globals.o: ../libs/asmjit/src/asmjit/base/globals.cpp ../libs/asmjit/src/asmjit/base/globals.h \
+		../libs/asmjit/src/asmjit/build.h \
+		../libs/asmjit/src/asmjit/config.h \
+		../libs/asmjit/src/asmjit/test/broken.h \
+		../libs/asmjit/src/asmjit/apibegin.h \
+		../libs/asmjit/src/asmjit/apiend.h
+	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o globals.o ../libs/asmjit/src/asmjit/base/globals.cpp
+
+intutil.o: ../libs/asmjit/src/asmjit/base/intutil.cpp ../libs/asmjit/src/asmjit/base/intutil.h \
+		../libs/asmjit/src/asmjit/base/globals.h \
+		../libs/asmjit/src/asmjit/build.h \
+		../libs/asmjit/src/asmjit/config.h \
+		../libs/asmjit/src/asmjit/test/broken.h \
+		../libs/asmjit/src/asmjit/apibegin.h \
+		../libs/asmjit/src/asmjit/apiend.h
+	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o intutil.o ../libs/asmjit/src/asmjit/base/intutil.cpp
+
+logger.o: ../libs/asmjit/src/asmjit/base/logger.cpp ../libs/asmjit/src/asmjit/build.h \
+		../libs/asmjit/src/asmjit/config.h \
+		../libs/asmjit/src/asmjit/test/broken.h \
+		../libs/asmjit/src/asmjit/base/intutil.h \
+		../libs/asmjit/src/asmjit/base/globals.h \
+		../libs/asmjit/src/asmjit/apibegin.h \
+		../libs/asmjit/src/asmjit/apiend.h \
+		../libs/asmjit/src/asmjit/base/logger.h \
+		../libs/asmjit/src/asmjit/base/string.h
+	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o logger.o ../libs/asmjit/src/asmjit/base/logger.cpp
+
+operand.o: ../libs/asmjit/src/asmjit/base/operand.cpp ../libs/asmjit/src/asmjit/base/globals.h \
+		../libs/asmjit/src/asmjit/build.h \
+		../libs/asmjit/src/asmjit/config.h \
+		../libs/asmjit/src/asmjit/test/broken.h \
+		../libs/asmjit/src/asmjit/apibegin.h \
+		../libs/asmjit/src/asmjit/apiend.h
+	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o operand.o ../libs/asmjit/src/asmjit/base/operand.cpp
+
+runtime.o: ../libs/asmjit/src/asmjit/base/runtime.cpp ../libs/asmjit/src/asmjit/base/assembler.h \
+		../libs/asmjit/src/asmjit/base/codegen.h \
+		../libs/asmjit/src/asmjit/base/error.h \
+		../libs/asmjit/src/asmjit/apibegin.h \
+		../libs/asmjit/src/asmjit/build.h \
+		../libs/asmjit/src/asmjit/config.h \
+		../libs/asmjit/src/asmjit/test/broken.h \
+		../libs/asmjit/src/asmjit/base/globals.h \
+		../libs/asmjit/src/asmjit/apiend.h \
+		../libs/asmjit/src/asmjit/base/logger.h \
+		../libs/asmjit/src/asmjit/base/string.h \
+		../libs/asmjit/src/asmjit/base/runtime.h \
+		../libs/asmjit/src/asmjit/base/vmem.h \
+		../libs/asmjit/src/asmjit/base/lock.h \
+		../libs/asmjit/src/asmjit/base/zone.h \
+		../libs/asmjit/src/asmjit/base/containers.h \
+		../libs/asmjit/src/asmjit/base/operand.h \
+		../libs/asmjit/src/asmjit/base/intutil.h \
+		../libs/asmjit/src/asmjit/base/cpuinfo.h
+	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o runtime.o ../libs/asmjit/src/asmjit/base/runtime.cpp
+
+string.o: ../libs/asmjit/src/asmjit/base/string.cpp ../libs/asmjit/src/asmjit/base/intutil.h \
+		../libs/asmjit/src/asmjit/base/globals.h \
+		../libs/asmjit/src/asmjit/build.h \
+		../libs/asmjit/src/asmjit/config.h \
+		../libs/asmjit/src/asmjit/test/broken.h \
+		../libs/asmjit/src/asmjit/apibegin.h \
+		../libs/asmjit/src/asmjit/apiend.h \
+		../libs/asmjit/src/asmjit/base/string.h
+	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o string.o ../libs/asmjit/src/asmjit/base/string.cpp
+
+vmem.o: ../libs/asmjit/src/asmjit/base/vmem.cpp ../libs/asmjit/src/asmjit/base/error.h \
+		../libs/asmjit/src/asmjit/apibegin.h \
+		../libs/asmjit/src/asmjit/build.h \
+		../libs/asmjit/src/asmjit/config.h \
+		../libs/asmjit/src/asmjit/test/broken.h \
+		../libs/asmjit/src/asmjit/base/globals.h \
+		../libs/asmjit/src/asmjit/apiend.h \
+		../libs/asmjit/src/asmjit/base/intutil.h \
+		../libs/asmjit/src/asmjit/base/lock.h \
+		../libs/asmjit/src/asmjit/base/vmem.h
+	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o vmem.o ../libs/asmjit/src/asmjit/base/vmem.cpp
+
+zone.o: ../libs/asmjit/src/asmjit/base/zone.cpp ../libs/asmjit/src/asmjit/base/intutil.h \
+		../libs/asmjit/src/asmjit/base/globals.h \
+		../libs/asmjit/src/asmjit/build.h \
+		../libs/asmjit/src/asmjit/config.h \
+		../libs/asmjit/src/asmjit/test/broken.h \
+		../libs/asmjit/src/asmjit/apibegin.h \
+		../libs/asmjit/src/asmjit/apiend.h \
+		../libs/asmjit/src/asmjit/base/zone.h
+	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o zone.o ../libs/asmjit/src/asmjit/base/zone.cpp
+
+x86assembler.o: ../libs/asmjit/src/asmjit/x86/x86assembler.cpp ../libs/asmjit/src/asmjit/build.h \
+		../libs/asmjit/src/asmjit/config.h \
+		../libs/asmjit/src/asmjit/test/broken.h \
+		../libs/asmjit/src/asmjit/base/intutil.h \
+		../libs/asmjit/src/asmjit/base/globals.h \
+		../libs/asmjit/src/asmjit/apibegin.h \
+		../libs/asmjit/src/asmjit/apiend.h \
+		../libs/asmjit/src/asmjit/base/logger.h \
+		../libs/asmjit/src/asmjit/base/string.h \
+		../libs/asmjit/src/asmjit/base/runtime.h \
+		../libs/asmjit/src/asmjit/base/error.h \
+		../libs/asmjit/src/asmjit/base/vmem.h \
+		../libs/asmjit/src/asmjit/base/lock.h \
+		../libs/asmjit/src/asmjit/x86/x86assembler.h \
+		../libs/asmjit/src/asmjit/base/assembler.h \
+		../libs/asmjit/src/asmjit/base/codegen.h \
+		../libs/asmjit/src/asmjit/base/zone.h \
+		../libs/asmjit/src/asmjit/base/containers.h \
+		../libs/asmjit/src/asmjit/base/operand.h \
+		../libs/asmjit/src/asmjit/x86/x86inst.h \
+		../libs/asmjit/src/asmjit/base/compiler.h \
+		../libs/asmjit/src/asmjit/base/constpool.h \
+		../libs/asmjit/src/asmjit/base/vectypes.h \
+		../libs/asmjit/src/asmjit/x86/x86operand.h \
+		../libs/asmjit/src/asmjit/x86/x86cpuinfo.h \
+		../libs/asmjit/src/asmjit/base/cpuinfo.h
+	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o x86assembler.o ../libs/asmjit/src/asmjit/x86/x86assembler.cpp
+
+x86compiler.o: ../libs/asmjit/src/asmjit/x86/x86compiler.cpp ../libs/asmjit/src/asmjit/build.h \
+		../libs/asmjit/src/asmjit/config.h \
+		../libs/asmjit/src/asmjit/test/broken.h \
+		../libs/asmjit/src/asmjit/base/intutil.h \
+		../libs/asmjit/src/asmjit/base/globals.h \
+		../libs/asmjit/src/asmjit/apibegin.h \
+		../libs/asmjit/src/asmjit/apiend.h \
+		../libs/asmjit/src/asmjit/base/string.h \
+		../libs/asmjit/src/asmjit/x86/x86assembler.h \
+		../libs/asmjit/src/asmjit/base/assembler.h \
+		../libs/asmjit/src/asmjit/base/codegen.h \
+		../libs/asmjit/src/asmjit/base/error.h \
+		../libs/asmjit/src/asmjit/base/logger.h \
+		../libs/asmjit/src/asmjit/base/runtime.h \
+		../libs/asmjit/src/asmjit/base/vmem.h \
+		../libs/asmjit/src/asmjit/base/lock.h \
+		../libs/asmjit/src/asmjit/base/zone.h \
+		../libs/asmjit/src/asmjit/base/containers.h \
+		../libs/asmjit/src/asmjit/base/operand.h \
+		../libs/asmjit/src/asmjit/x86/x86inst.h \
+		../libs/asmjit/src/asmjit/base/compiler.h \
+		../libs/asmjit/src/asmjit/base/constpool.h \
+		../libs/asmjit/src/asmjit/base/vectypes.h \
+		../libs/asmjit/src/asmjit/x86/x86operand.h \
+		../libs/asmjit/src/asmjit/x86/x86compiler.h \
+		../libs/asmjit/src/asmjit/x86/x86context_p.h \
+		../libs/asmjit/src/asmjit/base/context_p.h
+	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o x86compiler.o ../libs/asmjit/src/asmjit/x86/x86compiler.cpp
+
+x86context.o: ../libs/asmjit/src/asmjit/x86/x86context.cpp ../libs/asmjit/src/asmjit/build.h \
+		../libs/asmjit/src/asmjit/config.h \
+		../libs/asmjit/src/asmjit/test/broken.h \
+		../libs/asmjit/src/asmjit/base/intutil.h \
+		../libs/asmjit/src/asmjit/base/globals.h \
+		../libs/asmjit/src/asmjit/apibegin.h \
+		../libs/asmjit/src/asmjit/apiend.h \
+		../libs/asmjit/src/asmjit/base/string.h \
+		../libs/asmjit/src/asmjit/x86/x86assembler.h \
+		../libs/asmjit/src/asmjit/base/assembler.h \
+		../libs/asmjit/src/asmjit/base/codegen.h \
+		../libs/asmjit/src/asmjit/base/error.h \
+		../libs/asmjit/src/asmjit/base/logger.h \
+		../libs/asmjit/src/asmjit/base/runtime.h \
+		../libs/asmjit/src/asmjit/base/vmem.h \
+		../libs/asmjit/src/asmjit/base/lock.h \
+		../libs/asmjit/src/asmjit/base/zone.h \
+		../libs/asmjit/src/asmjit/base/containers.h \
+		../libs/asmjit/src/asmjit/base/operand.h \
+		../libs/asmjit/src/asmjit/x86/x86inst.h \
+		../libs/asmjit/src/asmjit/base/compiler.h \
+		../libs/asmjit/src/asmjit/base/constpool.h \
+		../libs/asmjit/src/asmjit/base/vectypes.h \
+		../libs/asmjit/src/asmjit/x86/x86operand.h \
+		../libs/asmjit/src/asmjit/x86/x86compiler.h \
+		../libs/asmjit/src/asmjit/x86/x86context_p.h \
+		../libs/asmjit/src/asmjit/base/context_p.h \
+		../libs/asmjit/src/asmjit/x86/x86cpuinfo.h \
+		../libs/asmjit/src/asmjit/base/cpuinfo.h \
+		../libs/asmjit/src/asmjit/x86/x86scheduler_p.h
+	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o x86context.o ../libs/asmjit/src/asmjit/x86/x86context.cpp
+
+x86cpuinfo.o: ../libs/asmjit/src/asmjit/x86/x86cpuinfo.cpp ../libs/asmjit/src/asmjit/build.h \
+		../libs/asmjit/src/asmjit/config.h \
+		../libs/asmjit/src/asmjit/test/broken.h \
+		../libs/asmjit/src/asmjit/base/intutil.h \
+		../libs/asmjit/src/asmjit/base/globals.h \
+		../libs/asmjit/src/asmjit/apibegin.h \
+		../libs/asmjit/src/asmjit/apiend.h \
+		../libs/asmjit/src/asmjit/x86/x86cpuinfo.h \
+		../libs/asmjit/src/asmjit/base/cpuinfo.h
+	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o x86cpuinfo.o ../libs/asmjit/src/asmjit/x86/x86cpuinfo.cpp
+
+x86inst.o: ../libs/asmjit/src/asmjit/x86/x86inst.cpp ../libs/asmjit/src/asmjit/build.h \
+		../libs/asmjit/src/asmjit/config.h \
+		../libs/asmjit/src/asmjit/test/broken.h \
+		../libs/asmjit/src/asmjit/x86/x86inst.h \
+		../libs/asmjit/src/asmjit/base/assembler.h \
+		../libs/asmjit/src/asmjit/base/codegen.h \
+		../libs/asmjit/src/asmjit/base/error.h \
+		../libs/asmjit/src/asmjit/apibegin.h \
+		../libs/asmjit/src/asmjit/base/globals.h \
+		../libs/asmjit/src/asmjit/apiend.h \
+		../libs/asmjit/src/asmjit/base/logger.h \
+		../libs/asmjit/src/asmjit/base/string.h \
+		../libs/asmjit/src/asmjit/base/runtime.h \
+		../libs/asmjit/src/asmjit/base/vmem.h \
+		../libs/asmjit/src/asmjit/base/lock.h \
+		../libs/asmjit/src/asmjit/base/zone.h \
+		../libs/asmjit/src/asmjit/base/containers.h \
+		../libs/asmjit/src/asmjit/base/operand.h \
+		../libs/asmjit/src/asmjit/base/intutil.h \
+		../libs/asmjit/src/asmjit/base/compiler.h \
+		../libs/asmjit/src/asmjit/base/constpool.h \
+		../libs/asmjit/src/asmjit/base/vectypes.h
+	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o x86inst.o ../libs/asmjit/src/asmjit/x86/x86inst.cpp
+
+x86operand_regs.o: ../libs/asmjit/src/asmjit/x86/x86operand_regs.cpp ../libs/asmjit/src/asmjit/build.h \
+		../libs/asmjit/src/asmjit/config.h \
+		../libs/asmjit/src/asmjit/test/broken.h \
+		../libs/asmjit/src/asmjit/x86/x86operand.h \
+		../libs/asmjit/src/asmjit/base/assembler.h \
+		../libs/asmjit/src/asmjit/base/codegen.h \
+		../libs/asmjit/src/asmjit/base/error.h \
+		../libs/asmjit/src/asmjit/apibegin.h \
+		../libs/asmjit/src/asmjit/base/globals.h \
+		../libs/asmjit/src/asmjit/apiend.h \
+		../libs/asmjit/src/asmjit/base/logger.h \
+		../libs/asmjit/src/asmjit/base/string.h \
+		../libs/asmjit/src/asmjit/base/runtime.h \
+		../libs/asmjit/src/asmjit/base/vmem.h \
+		../libs/asmjit/src/asmjit/base/lock.h \
+		../libs/asmjit/src/asmjit/base/zone.h \
+		../libs/asmjit/src/asmjit/base/containers.h \
+		../libs/asmjit/src/asmjit/base/operand.h \
+		../libs/asmjit/src/asmjit/base/intutil.h \
+		../libs/asmjit/src/asmjit/base/compiler.h \
+		../libs/asmjit/src/asmjit/base/constpool.h \
+		../libs/asmjit/src/asmjit/base/vectypes.h
+	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o x86operand_regs.o ../libs/asmjit/src/asmjit/x86/x86operand_regs.cpp
+
+x86operand.o: ../libs/asmjit/src/asmjit/x86/x86operand.cpp ../libs/asmjit/src/asmjit/build.h \
+		../libs/asmjit/src/asmjit/config.h \
+		../libs/asmjit/src/asmjit/test/broken.h \
+		../libs/asmjit/src/asmjit/x86/x86operand.h \
+		../libs/asmjit/src/asmjit/base/assembler.h \
+		../libs/asmjit/src/asmjit/base/codegen.h \
+		../libs/asmjit/src/asmjit/base/error.h \
+		../libs/asmjit/src/asmjit/apibegin.h \
+		../libs/asmjit/src/asmjit/base/globals.h \
+		../libs/asmjit/src/asmjit/apiend.h \
+		../libs/asmjit/src/asmjit/base/logger.h \
+		../libs/asmjit/src/asmjit/base/string.h \
+		../libs/asmjit/src/asmjit/base/runtime.h \
+		../libs/asmjit/src/asmjit/base/vmem.h \
+		../libs/asmjit/src/asmjit/base/lock.h \
+		../libs/asmjit/src/asmjit/base/zone.h \
+		../libs/asmjit/src/asmjit/base/containers.h \
+		../libs/asmjit/src/asmjit/base/operand.h \
+		../libs/asmjit/src/asmjit/base/intutil.h \
+		../libs/asmjit/src/asmjit/base/compiler.h \
+		../libs/asmjit/src/asmjit/base/constpool.h \
+		../libs/asmjit/src/asmjit/base/vectypes.h
+	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o x86operand.o ../libs/asmjit/src/asmjit/x86/x86operand.cpp
+
+x86scheduler.o: ../libs/asmjit/src/asmjit/x86/x86scheduler.cpp ../libs/asmjit/src/asmjit/build.h \
+		../libs/asmjit/src/asmjit/config.h \
+		../libs/asmjit/src/asmjit/test/broken.h \
+		../libs/asmjit/src/asmjit/base/containers.h \
+		../libs/asmjit/src/asmjit/base/error.h \
+		../libs/asmjit/src/asmjit/apibegin.h \
+		../libs/asmjit/src/asmjit/base/globals.h \
+		../libs/asmjit/src/asmjit/apiend.h \
+		../libs/asmjit/src/asmjit/x86/x86scheduler_p.h \
+		../libs/asmjit/src/asmjit/x86/x86compiler.h \
+		../libs/asmjit/src/asmjit/base/compiler.h \
+		../libs/asmjit/src/asmjit/base/assembler.h \
+		../libs/asmjit/src/asmjit/base/codegen.h \
+		../libs/asmjit/src/asmjit/base/logger.h \
+		../libs/asmjit/src/asmjit/base/string.h \
+		../libs/asmjit/src/asmjit/base/runtime.h \
+		../libs/asmjit/src/asmjit/base/vmem.h \
+		../libs/asmjit/src/asmjit/base/lock.h \
+		../libs/asmjit/src/asmjit/base/zone.h \
+		../libs/asmjit/src/asmjit/base/operand.h \
+		../libs/asmjit/src/asmjit/base/intutil.h \
+		../libs/asmjit/src/asmjit/base/constpool.h \
+		../libs/asmjit/src/asmjit/base/vectypes.h \
+		../libs/asmjit/src/asmjit/x86/x86assembler.h \
+		../libs/asmjit/src/asmjit/x86/x86inst.h \
+		../libs/asmjit/src/asmjit/x86/x86operand.h \
+		../libs/asmjit/src/asmjit/x86/x86context_p.h \
+		../libs/asmjit/src/asmjit/base/context_p.h \
+		../libs/asmjit/src/asmjit/x86/x86cpuinfo.h \
+		../libs/asmjit/src/asmjit/base/cpuinfo.h
+	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o x86scheduler.o ../libs/asmjit/src/asmjit/x86/x86scheduler.cpp
 
 ####### Install
 

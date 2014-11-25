@@ -1,6 +1,8 @@
 #include "mathvm.h"
 #include "parser.h"
 #include "visitors.h"
+#include "bytecodegenerator.h"
+#include "interpretercode.h"
 
 namespace mathvm {
 
@@ -17,14 +19,11 @@ Translator* Translator::create(const string& impl) {
 }
 
 Status* BytecodeTranslatorImpl::translate(const string& program, Code* *code) {
-    Parser parser;
-    Status* status = parser.parseProgram(program);
-    if (status != NULL && status->isError()) {
-        return status;
-    }
+    InterpreterCodeImpl* interpreterCode;
+    Status* status = translateBytecode(program, &interpreterCode);
+    *code = interpreterCode;
 
-    AstFunction* top = parser.top();
-    return Status::Ok();
+    return status;
 }
 
 Status* BytecodeTranslatorImpl::translateBytecode(const string &program, InterpreterCodeImpl **code)
@@ -36,7 +35,14 @@ Status* BytecodeTranslatorImpl::translateBytecode(const string &program, Interpr
     }
 
     AstFunction* top = parser.top();
-    return 0;
+    BytecodeGenerator bytecodeGenerator;
+    InterpreterCodeImpl* bytecode = bytecodeGenerator.makeBytecode(top);
+    if (bytecode == NULL) {
+        return Status::Error("");
+    }
+    *code = bytecode;
+
+    return status;
 }
 
 }

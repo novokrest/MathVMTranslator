@@ -1,4 +1,4 @@
-#include "BytecodeGenerator.h"
+#include "bytecodegenerator.h"
 
 namespace mathvm {
 
@@ -378,6 +378,7 @@ void BytecodeGenerator::loadValueFromVar(uint16_t scopeId,
         break;
     case VT_STRING:
         bytecode()->add(BC_LOADCTXSVAR);
+        break;
     default:
         throw TranslationException();
         break;
@@ -399,6 +400,7 @@ void BytecodeGenerator::storeValueToVar(uint16_t scopeId,
         break;
     case VT_STRING:
         bytecode()->add(BC_STORECTXSVAR);
+        break;
     default:
         throw TranslationException();
         break;
@@ -594,15 +596,23 @@ uint16_t BytecodeGenerator::translatedFunctionId() {
     return _bcFunctionStack.back();
 }
 
+void BytecodeGenerator::addReturn()
+{
+    bytecode()->add(BC_RETURN);
+}
+
 void BytecodeGenerator::visitReturnNode(ReturnNode *node) {
     uint16_t id = translatedFunctionId();
     BytecodeFunction* bcFunction = _bcFunctions[id];
     VarType targetReturnType = bcFunction->returnType();
 
     AstNode* returnExpr = node->returnExpr();
-    returnExpr->visit(this);
-    VarType returnExprType = resolveType(returnExpr);
-    addCast(returnExprType, targetReturnType);
+    if (returnExpr != NULL) {
+        returnExpr->visit(this);
+        VarType returnExprType = resolveType(returnExpr);
+        addCast(returnExprType, targetReturnType);
+    }
+    addReturn();
 }
 
 void BytecodeGenerator::addPrint(VarType type) {
@@ -637,6 +647,8 @@ void BytecodeGenerator::visitNativeCallNode(NativeCallNode *node) {
 
     NativeFunctionDescriptor nativeDesc(node->nativeName(), node->nativeSignature(), 0);
     _natives.push_back(nativeDesc);
+
+    _code->makeNativeFunction(node->nativeName(), node->nativeSignature(), NULL);
 }
 
 AstFunction* BytecodeGenerator::getFunction(Scope* scope, const string& name) {
@@ -662,6 +674,9 @@ uint16_t BytecodeGenerator::getFunctionId(Scope* scope, const string& name) {
 void BytecodeGenerator::visitCallNode(CallNode *node) {
     string callName = node->name();
     AstFunction* function = getFunction(currentScope(), callName);
+    uint16_t id = _astFunctions[function];
+    bytecode()->add(BC_CALL);
+    bytecode()->addInt16(id);
     if (node->parametersNumber() != function->parametersNumber()) {
         throw TranslationException();
     }
@@ -673,9 +688,6 @@ void BytecodeGenerator::visitCallNode(CallNode *node) {
         VarType paramType = function->parameterType(i);
         addCast(argType, paramType);
     }
-    uint16_t id = _astFunctions[function];
-    bytecode()->add(BC_CALL);
-    bytecode()->addInt16(id);
 }
 
 
@@ -723,7 +735,7 @@ uint16_t BytecodeGenerator::registerFunction(AstFunction* astFunction) {
     uint16_t id = _bcFunctions.size();
     _astFunctions[astFunction] = id;
     BytecodeFunction* bcFunction = new BytecodeFunction(astFunction);
-    bcFunction->assignId(id);
+    //bcFunction->assignId(id);
     _bcFunctions.push_back(bcFunction);
 
     return id;
@@ -763,6 +775,21 @@ uint16_t BytecodeGenerator::registerScope(Scope * scope) {
     }
 
     return id;
+}
+
+InterpreterCodeImpl* BytecodeGenerator::makeBytecode(AstFunction* top) {
+    _code = new InterpreterCodeImpl();
+    visitAstFunction(top);
+
+    for (BytecodeFunctionVec::const_iterator bcFunctionIt = _bcFunctions.begin(); bcFunctionIt != _bcFunctions.end(); ++bcFunctionIt) {
+        _code->addFunction(*bcFunctionIt);
+    }
+
+    for (vstr::const_iterator constantIt = _constants.begin(); constantIt != _constants.end(); ++constantIt) {
+        _code->makeStringConstant(*constantIt);
+    }
+
+    return _code;
 }
 
 }

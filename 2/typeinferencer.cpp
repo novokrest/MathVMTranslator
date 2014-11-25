@@ -1,7 +1,12 @@
-#include "BytecodeGenerator.h"
+#include "bytecodegenerator.h"
 
 namespace mathvm
 {
+
+const TokenKind TypeInferencer::assignOps[]  = {tASSIGN, tINCRSET, tDECRSET};
+const TokenKind TypeInferencer::compareOps[] = {tEQ, tNEQ, tNOT, tLT, tLE, tGT, tGE, tOR, tAND};
+const TokenKind TypeInferencer::bitOps[]     = {tAOR, tAAND, tAXOR};
+const TokenKind TypeInferencer::ariphmOps[]  = {tADD, tSUB, tMUL, tDIV};
 
 TypeInferencer::TypeInferencer() {
 }
@@ -14,7 +19,7 @@ VarType TypeInferencer::resolveType(AstNode *node) {
     return _type;
 }
 
-bool TypeInferencer::find(TokenKind op, TokenKind ops[], int count) {
+bool TypeInferencer::find(TokenKind op, const TokenKind ops[], int count) {
     for (int i = 0; i < count; ++i) {
         if (ops[i] == op) {
             return true;
@@ -26,22 +31,22 @@ bool TypeInferencer::find(TokenKind op, TokenKind ops[], int count) {
 VarType TypeInferencer::commonTypeForBinOp(TokenKind binOp, VarType left, VarType right) const
 {
     //  =  +=  -=
-    if (isAssignmentOp(binOp)) {
+    if (find(binOp, assignOps, ASSIGN_COUNT)) {
         return left;
     }
 
     //  ==  !=  !  >  >=  <  <=  ||  &&
-    else if (isCompareOp(binOp)) {
+    else if (find(binOp, compareOps, COMPARE_COUNT)) {
         return commonType(left, right);
     }
 
     //  |  &  ^
-    else if (isBitOp(binOp)) {
+    else if (find(binOp, bitOps, BIT_COUNT)) {
         return VT_INT;
     }
 
     //  +  -  *  /
-    else if (isAriphmOp(binOp)) {
+    else if (find(binOp, ariphmOps, ARIPHM_COUNT)) {
         return commonType(left, right);
     }
 
