@@ -3,6 +3,7 @@
 
 #include "mathvm.h"
 #include "contextmanager.h"
+#include "exceptions.h"
 
 namespace mathvm {
 
@@ -11,7 +12,7 @@ class InterpreterCodeImpl : public Code
     InterpreterStack _stack;
     ContextManager _contextManager;
     std::vector<Bytecode*> _bytecodes;
-    std::vector<uint32_t> _indexes;
+    std::vector<uint64_t> _indexes;
 
     void executeBytecode();
     void executeBytecodeInsn(Instruction insn);
@@ -19,12 +20,15 @@ class InterpreterCodeImpl : public Code
     void addNewBytecode(Bytecode* bytecode);
     void removeLastBytecode();
 
-    uint32_t bytecodeIndex();
-    void shiftBytecodeIndex(int32_t shift);
-    void setBytecodeIndex(uint32_t index);
+    uint64_t bytecodeIndex();
+    void shiftBytecodeIndex(int64_t shift);
+    void setBytecodeIndex(uint64_t index);
 
-    static int32_t compare(double upper, double lower);
-    static int32_t compare(int32_t upper, int32_t lower);
+    static int64_t compare(double upper, double lower);
+    static int64_t compare(int64_t upper, int64_t lower);
+
+    void readCtxIdVarId(uint16_t& ctxId, uint16_t& varId);
+    void readVarId(uint16_t& varId);
 
 #define EXECUTE_INSN(b, d, l)         \
     void execute##b();
@@ -40,38 +44,6 @@ public:
 
     virtual Status* execute(vector<Var *> &vars);
     virtual void disassemble(ostream& out = cout, FunctionFilter* filter = 0);
-};
-
-class MessageException : public exception
-{
-    string _message;
-
-public:
-    MessageException() {
-    }
-
-    virtual ~MessageException() throw() {
-    }
-
-    MessageException(string const& message)
-        : _message(message) {
-    }
-
-    virtual const char* what() const throw() {
-        return _message.c_str();
-    }
-};
-
-class InterpretationException: public MessageException
-{
-public:
-    InterpretationException() {
-    }
-
-    InterpretationException(string const& message)
-        : MessageException(message) {
-
-    }
 };
 
 }

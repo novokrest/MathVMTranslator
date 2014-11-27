@@ -29,7 +29,6 @@ SOURCES += main.cpp \
     2/bytecodegenerator.cpp \
     2/typeinferencer.cpp \
     2/interpretercode.cpp \
-    2/stack.cpp \
     2/contextmanager.cpp
 
 HEADERS += \
@@ -59,10 +58,10 @@ HEADERS += \
     libs/AsmJit/Util_p.h \
     libs/AsmJit/Util.h \
 #    students/2014/novokreschenov/1/ast_printer.h \
-    2/typeinferencer.h \
     2/bytecodegenerator.h \
     2/interpretercode.h \
-    2/contextmanager.h
+    2/contextmanager.h \
+    2/exceptions.h
 
 INCLUDEPATH += vm \
                include \

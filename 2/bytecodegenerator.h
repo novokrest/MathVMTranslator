@@ -4,6 +4,8 @@
 #include "mathvm.h"
 #include "visitors.h"
 #include "interpretercode.h"
+#include "exceptions.h"
+
 
 namespace mathvm {
 
@@ -178,27 +180,6 @@ public:
 
     FOR_NODES(VISITOR_FUNCTION)
 #undef VISITOR_FUNCTION
-};
-
-
-class TranslationException: public exception
-{
-    string _message;
-
-public:
-    TranslationException() {
-    }
-
-    virtual ~TranslationException() throw() {
-    }
-
-    TranslationException(string const& message)
-        : _message(message) {
-    }
-
-    virtual const char* what() const throw() {
-        return _message.c_str();
-    }
 };
 
 }

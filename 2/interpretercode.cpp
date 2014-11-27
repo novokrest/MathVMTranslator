@@ -4,7 +4,7 @@
 
 namespace mathvm {
 
-int32_t InterpreterCodeImpl::compare(double upper, double lower) {
+int64_t InterpreterCodeImpl::compare(double upper, double lower) {
     if (upper == lower) {
         return 0;
     }
@@ -12,7 +12,7 @@ int32_t InterpreterCodeImpl::compare(double upper, double lower) {
     return upper > lower ? 1 : -1;
 }
 
-int32_t InterpreterCodeImpl::compare(int32_t upper, int32_t lower) {
+int64_t InterpreterCodeImpl::compare(int64_t upper, int64_t lower) {
     if (upper == lower) {
         return 0;
     }
@@ -20,20 +20,30 @@ int32_t InterpreterCodeImpl::compare(int32_t upper, int32_t lower) {
     return upper > lower ? 1 : -1;
 }
 
-InterpreterCodeImpl::~InterpreterCodeImpl()
-{}
+InterpreterCodeImpl::~InterpreterCodeImpl() {
 
-Status* InterpreterCodeImpl::execute(vector<Var *> &vars)
+}
+
+Status* InterpreterCodeImpl::execute(vector<Var*> &vars)
 {
-    return Status::Error("not implemented");
+    BytecodeFunction* bcFunction = dynamic_cast<BytecodeFunction*>(functionByName("<top>"));
+    try {
+        executeBytecodeFunction(bcFunction);
+    }
+    catch (MessageException& exception) {
+        return Status::Error(exception.what());
+    }
+
+    return Status::Ok();
 }
 
 void InterpreterCodeImpl::disassemble(ostream &out, FunctionFilter *filter)
 {}
 
 void InterpreterCodeImpl::executeBytecode() {
-    while(bytecodeIndex() != executedBytecode()->length()) {
-        executeBytecodeInsn(executedBytecode()->get(index()));
+    while(bytecodeIndex() != bytecode()->length()) {
+        Instruction insn = static_cast<Instruction>(bytecode()->get(bytecodeIndex()));
+        executeBytecodeInsn(insn);
     }
 }
 
@@ -67,15 +77,15 @@ void InterpreterCodeImpl::removeLastBytecode() {
     _indexes.pop_back();
 }
 
-uint32_t InterpreterCodeImpl::bytecodeIndex() {
+uint64_t InterpreterCodeImpl::bytecodeIndex() {
     return _indexes.back();
 }
 
-void InterpreterCodeImpl::shiftBytecodeIndex(int32_t shift) {
+void InterpreterCodeImpl::shiftBytecodeIndex(int64_t shift) {
     _indexes.back() += shift;
 }
 
-void InterpreterCodeImpl::setBytecodeIndex(uint32_t index) {
+void InterpreterCodeImpl::setBytecodeIndex(uint64_t index) {
     _indexes.back() = index;
 }
 
@@ -85,229 +95,229 @@ void InterpreterCodeImpl::executeINVALID() {
 
 void InterpreterCodeImpl::executeDLOAD()
 {
-    shiftBytecodeIndex(+1);
-    double d = bytecode()->getDouble(index());
-    loadOnTOS(VT_DOUBLE, d);
-    shiftBytecodeIndex(+1);
+    shiftBytecodeIndex(1);
+    double d = bytecode()->getDouble(bytecodeIndex());
+    shiftBytecodeIndex(sizeof(double));
+    _stack.pushDouble(d);
 }
 
 void InterpreterCodeImpl::executeILOAD()
 {
-    shiftBytecodeIndex(+1);
-    int32_t i = bytecode()->getTyped<int32_t>(index());
-    loadOnTOS(VT_INT, i);
-    shiftBytecodeIndex(+1);
+    shiftBytecodeIndex(1);
+    int64_t i = bytecode()->getTyped<int64_t>(bytecodeIndex());
+    shiftBytecodeIndex(sizeof(int64_t));
+    _stack.pushInt(i);
 }
 
 void InterpreterCodeImpl::executeSLOAD()
 {
-    shiftBytecodeIndex(+1);
-    uint16_t id = bytecode()->getTyped<uint16_t>(index());
-    loadOnTOS(VT_STRING, id);
-    shiftBytecodeIndex(+1);
+    shiftBytecodeIndex(1);
+    uint16_t id = bytecode()->getUInt16(bytecodeIndex());
+    shiftBytecodeIndex(sizeof(uint16_t));
+    _stack.pushStringId(id);
 }
 
 void InterpreterCodeImpl::executeDLOAD0()
 {
-    loadOnTOS(VT_DOUBLE, 0);
-    shiftBytecodeIndex(+1);
+    shiftBytecodeIndex(1);
+    _stack.pushDouble(0);
 }
 
 void InterpreterCodeImpl::executeILOAD0()
 {
-    loadOnTOS(VT_INT, 0);
-    shiftBytecodeIndex(+1);
+    shiftBytecodeIndex(1);
+    _stack.pushInt(0);
 }
 
 void InterpreterCodeImpl::executeSLOAD0()
 {
-    loadOnTOS(VT_STRING, 0);
-    shiftBytecodeIndex(+1);
+    shiftBytecodeIndex(1);
+    _stack.pushStringId(0);
 }
 
 void InterpreterCodeImpl::executeDLOAD1()
 {
-    loadOnTOS(VT_DOUBLE, 1);
-    shiftBytecodeIndex(+1);
+    shiftBytecodeIndex(1);
+    _stack.pushDouble(1.0);
 }
 
 void InterpreterCodeImpl::executeILOAD1()
 {
-    loadOnTOS(VT_INT, 1);
-    shiftBytecodeIndex(+1);
+    shiftBytecodeIndex(1);
+    _stack.pushInt(1);
 }
 
 void InterpreterCodeImpl::executeDLOADM1()
 {
-    loadOnTOS(VT_DOUBLE, -1.0);
-    shiftBytecodeIndex(+1);
+    shiftBytecodeIndex(1);
+    _stack.pushDouble(-1.0);
 }
 
 void InterpreterCodeImpl::executeILOADM1()
 {
-    loadOnTOS(VT_INT, -1);
+    shiftBytecodeIndex(1);
+    _stack.pushInt(-1);
 }
 
 void InterpreterCodeImpl::executeDADD()
 {
-    double d1 = popDoubleFromTOS();
-    double d2 = popDoubleFromTOS();
-    double dadd = d1 + d2;
-    pushDoubleOnTOS(dadd);
-    shiftBytecodeIndex(+1);
+    shiftBytecodeIndex(1);
+    double d1 = _stack.popDouble();
+    double d2 = _stack.popDouble();
+    double dres = d1 + d2;
+    _stack.pushDouble(dres);
 }
 
 void InterpreterCodeImpl::executeIADD()
 {
-    int32_t i1 = popInt32FromTOS();
-    int32_t i2 = popInt32FromTOS();
-    int32_t iadd = i1 + i2;
-    pushInt32OnTOS(iadd);
-    shiftBytecodeIndex(+1);
+    shiftBytecodeIndex(1);
+    int64_t i1 = _stack.popInt();
+    int64_t i2 = _stack.popInt();
+    int64_t ires = i1 + i2;
+    _stack.pushInt(ires);
 }
 
 void InterpreterCodeImpl::executeDSUB()
 {
-    double d1 = popDoubleFromTOS();
-    double d2 = popDoubleFromTOS();
-    double dsub = d1 - d2;
-    pushDoubleOnTOS(dsub);
-    shiftBytecodeIndex(+1);
+    shiftBytecodeIndex(1);
+    double d1 = _stack.popDouble();
+    double d2 = _stack.popDouble();
+    double dres = d1 - d2;
+    _stack.pushDouble(dres);
 }
 
 void InterpreterCodeImpl::executeISUB()
 {
-    int32_t i1 = popInt32FromTOS();
-    int32_t i2 = popInt32FromTOS();
-    int32_t isub = i1 - i2;
-    pushInt32OnTOS(isub);
-    shiftBytecodeIndex(+1);
+    shiftBytecodeIndex(1);
+    int64_t i1 = _stack.popInt();
+    int64_t i2 = _stack.popInt();
+    int64_t ires = i1 - i2;
+    _stack.pushInt(ires);
 }
 
 void InterpreterCodeImpl::executeDMUL()
 {
-    double d1 = popDoubleFromTOS();
-    double d2 = popDoubleFromTOS();
-    double dmul = d1 * d2;
-    pushDoubleOnTOS(dmul);
     shiftBytecodeIndex(1);
+    double d1 = _stack.popDouble();
+    double d2 = _stack.popDouble();
+    double dres = d1 * d2;
+    _stack.pushDouble(dres);
 }
 
 void InterpreterCodeImpl::executeIMUL()
 {
-    int32_t i1 = popInt32FromTOS();
-    int32_t i2 = popInt32FromTOS();
-    int32_t imul= i1 * i2;
-    pushInt32OnTOS(imul);
     shiftBytecodeIndex(1);
+    int64_t i1 = _stack.popInt();
+    int64_t i2 = _stack.popInt();
+    int64_t ires = i1 * i2;
+    _stack.pushInt(ires);
 }
 
 void InterpreterCodeImpl::executeDDIV()
 {
-    double d1 = popDoubleFromTOS();
-    double d2 = popDoubleFromTOS();
-    double ddiv = d1 / d2;
-    pushDoubleOnTOS(ddiv);
     shiftBytecodeIndex(1);
+    double d1 = _stack.popDouble();
+    double d2 = _stack.popDouble();
+    double dres = d1 / d2;
+    _stack.pushDouble(dres);
 }
 
 void InterpreterCodeImpl::executeIDIV()
 {
-    int32_t i1 = popInt32FromTOS();
-    int32_t i2 = popInt32FromTOS();
-    int32_t idiv = i1 / i2;
-    pushInt32OnTOS(idiv);
     shiftBytecodeIndex(1);
+    int64_t i1 = _stack.popInt();
+    int64_t i2 = _stack.popInt();
+    int64_t ires = i1 / i2;
+    _stack.pushInt(ires);
 }
 
 void InterpreterCodeImpl::executeIMOD()
 {
-    int32_t i1 = popInt32FromTOS();
-    int32_t i2 = popInt32FromTOS();
-    int32_t imod = i1 % i2;
-    pushInt32OnTOS(imod);
     shiftBytecodeIndex(1);
+    int64_t i1 = _stack.popInt();
+    int64_t i2 = _stack.popInt();
+    int64_t ires = i1 % i2;
+    _stack.pushInt(ires);
 }
 
 void InterpreterCodeImpl::executeDNEG()
 {
-    double d = popInt32FromTOS();
-    double dneg = -d;
-    pushDoubleOnTOS(dneg);
     shiftBytecodeIndex(1);
+    double d = _stack.popDouble();
+    double dneg = -d;
+    _stack.pushDouble(dneg);
 }
 
 void InterpreterCodeImpl::executeINEG()
 {
-    int32_t i = popInt32FromTOS();
-    int32_t ineg = -i;
-    pushInt32OnTOS(ineg);
     shiftBytecodeIndex(1);
+    int64_t i = _stack.popInt();
+    int64_t ineg = -i;
+    _stack.pushInt(ineg);
 }
 
 void InterpreterCodeImpl::executeIAOR()
 {
-    int32_t i1 = popInt32FromTOS();
-    int32_t i2 = popInt32FromTOS();
-    int32_t iaor = i1 | i2;
-    pushInt32OnTOS(iaor);
     shiftBytecodeIndex(1);
+    int64_t i1 = _stack.popInt();
+    int64_t i2 = _stack.popInt();
+    int64_t iaor = i1 | i2;
+    _stack.pushInt(iaor);
 }
 
 void InterpreterCodeImpl::executeIAAND()
 {
-    int32_t i1 = popInt32FromTOS();
-    int32_t i2 = popInt32FromTOS();
-    int32_t iaand = i1 & i2;
-    pushInt32OnTOS(iaand);
     shiftBytecodeIndex(1);
+    int64_t i1 = _stack.popInt();
+    int64_t i2 = _stack.popInt();
+    int64_t iaand = i1 & i2;
+    _stack.pushInt(iaand);
 }
 
 void InterpreterCodeImpl::executeIAXOR()
 {
-    int32_t i1 = popInt32FromTOS();
-    int32_t i2 = popInt32FromTOS();
-    int32_t iaxor = i1 ^ i2;
-    pushInt32OnTOS(iaxor);
     shiftBytecodeIndex(1);
+    int64_t i1 = _stack.popInt();
+    int64_t i2 = _stack.popInt();
+    int64_t iaxor = i1 ^ i2;
+    _stack.pushInt(iaxor);
 }
 
 void InterpreterCodeImpl::executeIPRINT()
 {
-    int32_t i = popInt32FromTOS();
-    printf("%d\n", i);
     shiftBytecodeIndex(1);
+    int64_t i = _stack.popInt();
+    printf("%d\n", i);
 }
 
 void InterpreterCodeImpl::executeDPRINT()
 {
-    double d = popDoubleFromTOS();
-    printf("%.3f\n", d);
     shiftBytecodeIndex(1);
+    double d = _stack.popDouble();
+    printf("%.3f\n", d);
 }
 
 void InterpreterCodeImpl::executeSPRINT()
 {
-    int32_t id = popInt32FromTOS();
-    string& constant = constantById((uint16_t)id);
-    printf("%s\n", constant);
     shiftBytecodeIndex(1);
+    uint16_t id = _stack.popStringId();
+    printf("%s\n", constantById(id).c_str());
 }
 
 void InterpreterCodeImpl::executeI2D()
 {
-    int32_t i = popInt32FromTOS();
-    double d = i;
-    pushDoubleOnTOS(d);
     shiftBytecodeIndex(1);
+    int64_t i = _stack.popInt();
+    double d = static_cast<double>(i);
+    _stack.pushDouble(d);
 }
 
 void InterpreterCodeImpl::executeD2I()
 {
-    double d = popDoubleFromTOS();
-    int32_t i = d;
-    pushInt32OnTOS(i);
     shiftBytecodeIndex(1);
+    double d = _stack.popDouble();
+    int64_t i = static_cast<int64_t>(d);
+    _stack.pushInt(i);
 }
 
 void InterpreterCodeImpl::executeS2I()
@@ -318,280 +328,330 @@ void InterpreterCodeImpl::executeS2I()
 
 void InterpreterCodeImpl::executeSWAP()
 {
-    //    _stack.swapTwoTopmostElements();
-    swapTwoTopmostElements();
     shiftBytecodeIndex(1);
+    _stack.swapTwoUpperElements();
 }
 
 void InterpreterCodeImpl::executePOP()
 {
-    popElementFromTOS();
     shiftBytecodeIndex(1);
+    _stack.popElement();
 }
 
 void InterpreterCodeImpl::executeLOADDVAR0()
 {
-    double d = loadDoubleFromCurrentScope(0);
-    pushDoubleOnTOS(d);
     shiftBytecodeIndex(1);
+    double d = _contextManager.loadDoubleFromVar(0);
+    _stack.pushDouble(d);
 }
 
 void InterpreterCodeImpl::executeLOADDVAR1()
 {
-    double d = loadDoubleFromCurrentScope(1);
-    pushDoubleOnTOS(d);
     shiftBytecodeIndex(1);
+    double d = _contextManager.loadDoubleFromVar(1);
+    _stack.pushDouble(d);
 }
 
 void InterpreterCodeImpl::executeLOADDVAR2()
 {
-    double d = loadDoubleFromCurrentScope(2);
-    pushDoubleOnTOS(d);
     shiftBytecodeIndex(1);
+    double d = _contextManager.loadDoubleFromVar(2);
+    _stack.pushDouble(d);
 }
 
 void InterpreterCodeImpl::executeLOADDVAR3()
 {
-    double d = loadDoubleFromCurrentScope(3);
-    pushDoubleOnTOS(d);
     shiftBytecodeIndex(1);
+    double d = _contextManager.loadDoubleFromVar(3);
+    _stack.pushDouble(d);
 }
 
 void InterpreterCodeImpl::executeLOADIVAR0()
 {
-    int32_t i = loadInt32FromCurrentScope(0);
-    pushInt32OnTOS(i);
     shiftBytecodeIndex(1);
+    int64_t i = _contextManager.loadIntFromVar(0);
+    _stack.pushInt(i);
 }
 
 void InterpreterCodeImpl::executeLOADIVAR1()
 {
-    int32_t i = loadInt32FromCurrentScope(1);
-    pushInt32OnTOS(i);
     shiftBytecodeIndex(1);
+    int64_t i = _contextManager.loadIntFromVar(1);
+    _stack.pushInt(i);
 }
 
 void InterpreterCodeImpl::executeLOADIVAR2()
 {
-    int32_t i = loadInt32FromCurrentScope(2);
-    pushInt32OnTOS(i);
     shiftBytecodeIndex(1);
+    int64_t i = _contextManager.loadIntFromVar(2);
+    _stack.pushInt(i);
 }
 
 void InterpreterCodeImpl::executeLOADIVAR3()
 {
-    int32_t i = loadInt32FromCurrentScope(3);
-    pushInt32OnTOS(i);
     shiftBytecodeIndex(1);
+    int64_t i = _contextManager.loadIntFromVar(3);
+    _stack.pushInt(i);
 }
 
 void InterpreterCodeImpl::executeLOADSVAR0()
 {
-    executeLOADIVAR0();
+    shiftBytecodeIndex(1);
+    uint16_t stringId = _contextManager.loadStringIdFromVar(0);
+    _stack.pushStringId(stringId);
 }
 
 void InterpreterCodeImpl::executeLOADSVAR1()
 {
-    executeLOADIVAR1();
+    shiftBytecodeIndex(1);
+    uint16_t stringId = _contextManager.loadStringIdFromVar(1);
+    _stack.pushStringId(stringId);
 }
 
 void InterpreterCodeImpl::executeLOADSVAR2()
 {
-    executeLOADIVAR2();
+    shiftBytecodeIndex(1);
+    uint16_t stringId = _contextManager.loadStringIdFromVar(2);
+    _stack.pushStringId(stringId);
 }
 
 void InterpreterCodeImpl::executeLOADSVAR3()
 {
-    executeLOADIVAR3();
+    shiftBytecodeIndex(1);
+    uint16_t stringId = _contextManager.loadStringIdFromVar(3);
+    _stack.pushStringId(stringId);
 }
 
 void InterpreterCodeImpl::executeSTOREDVAR0()
 {
-    double d = popDoubleFromTOS();
-    storeDoubleInCurrentScope(0, d);
     shiftBytecodeIndex(1);
+    double d = _stack.popDouble();
+    _contextManager.storeDoubleToVar(0, d);
 }
 
 void InterpreterCodeImpl::executeSTOREDVAR1()
 {
-    double d = popDoubleFromTOS();
-    storeDoubleInCurrentScope(1, d);
     shiftBytecodeIndex(1);
+    double d = _stack.popDouble();
+    _contextManager.storeDoubleToVar(1, d);
 }
 
 void InterpreterCodeImpl::executeSTOREDVAR2()
 {
-    double d = popDoubleFromTOS();
-    storeDoubleInCurrentScope(2, d);
     shiftBytecodeIndex(1);
+    double d = _stack.popDouble();
+    _contextManager.storeDoubleToVar(2, d);
 }
 
 void InterpreterCodeImpl::executeSTOREDVAR3()
 {
-    double d = popDoubleFromTOS();
-    storeDoubleInCurrentScope(3, d);
     shiftBytecodeIndex(1);
+    double d = _stack.popDouble();
+    _contextManager.storeDoubleToVar(3, d);
 }
 
 void InterpreterCodeImpl::executeSTOREIVAR0()
 {
-    int32_t i = popInt32FromTOS();
-    storeInt32InCurrentScope(0, i);
     shiftBytecodeIndex(1);
+    int64_t i = _stack.popInt();
+    _contextManager.storeIntToVar(0, i);
 }
 
 void InterpreterCodeImpl::executeSTOREIVAR1()
 {
-    int32_t i = popInt32FromTOS();
-    storeInt32InCurrentScope(1, i);
     shiftBytecodeIndex(1);
+    int64_t i = _stack.popInt();
+    _contextManager.storeIntToVar(1, i);
 }
 
 void InterpreterCodeImpl::executeSTOREIVAR2()
 {
-    int32_t i = popInt32FromTOS();
-    storeInt32InCurrentScope(2, i);
     shiftBytecodeIndex(1);
+    int64_t i = _stack.popInt();
+    _contextManager.storeIntToVar(2, i);
 }
 
 void InterpreterCodeImpl::executeSTOREIVAR3()
 {
-    int32_t i = popInt32FromTOS();
-    storeInt32InCurrentScope(3, i);
     shiftBytecodeIndex(1);
+    int64_t i = _stack.popInt();
+    _contextManager.storeIntToVar(3, i);
 }
 
 void InterpreterCodeImpl::executeSTORESVAR0()
 {
-    executeSTOREIVAR0();
+    shiftBytecodeIndex(1);
+    uint16_t stringId = _stack.popStringId();
+    _contextManager.storeStringIdToVar(0, stringId);
 }
 
 void InterpreterCodeImpl::executeSTORESVAR1()
 {
-    executeSTOREIVAR1();
+    shiftBytecodeIndex(1);
+    uint16_t stringId = _stack.popStringId();
+    _contextManager.storeStringIdToVar(1, stringId);
 }
 
 void InterpreterCodeImpl::executeSTORESVAR2()
 {
-    executeSTOREIVAR2();
+    shiftBytecodeIndex(1);
+    uint16_t stringId = _stack.popStringId();
+    _contextManager.storeStringIdToVar(2, stringId);
 }
 
 void InterpreterCodeImpl::executeSTORESVAR3()
 {
-    executeSTOREIVAR3();
+    shiftBytecodeIndex(1);
+    uint16_t stringId = _stack.popStringId();
+    _contextManager.storeStringIdToVar(3, stringId);
+}
+
+void InterpreterCodeImpl::readVarId(uint16_t& varId) {
+    varId = bytecode()->getUInt16(bytecodeIndex());
+    shiftBytecodeIndex(2);
 }
 
 void InterpreterCodeImpl::executeLOADDVAR()
 {
     shiftBytecodeIndex(1);
-    uint16_t varId = executedBytecode()->get<uint16_t>(executedBytecodeIndex());
-    double d = loadDoubleFromCurrentScope(varId);
-    pushDoubleOnTOS(d);
-    shiftBytecodeIndex(2);
+    uint16_t varId;
+    readVarId(varId);
+    double d = _contextManager.loadDoubleFromVar(varId);
+    _stack.pushDouble(d);
 }
 
 void InterpreterCodeImpl::executeLOADIVAR()
 {
     shiftBytecodeIndex(1);
-    uint16_t varId = executedBytecode()->get<uint16_t>(executedBytecodeIndex());
-    int32_t i = loadInt32FromCurrentScope(varId);
-    pushInt32OnTOS(i);
-    shiftBytecodeIndex(2);
+    uint16_t varId;
+    readVarId(varId);
+    int64_t i = _contextManager.loadIntFromVar(varId);
+    _stack.pushInt(i);
 }
 
 void InterpreterCodeImpl::executeLOADSVAR()
 {
     shiftBytecodeIndex(1);
-    uint16_t varId = executedBytecode()->get<uint16_t>(executedBytecodeIndex());
-    uint16_t constantId = static_cast<uint16_t>(loadInt32FromCurrentScope(varId));
-    pushStringOnTOS(constantId);
-    shiftBytecodeIndex(2);
+    uint16_t varId;
+    readVarId(varId);
+    uint16_t stringId = _contextManager.loadStringIdFromVar(varId);
+    _stack.pushInt(stringId);
 }
 
 void InterpreterCodeImpl::executeSTOREDVAR()
 {
     shiftBytecodeIndex(1);
-    uint16_t varId = executedBytecode()->getUInt16(executedBytecodeIndex());
-    shiftBytecodeIndex(2);
-    double d = popDoubleFromTOS();
-    storeDoubleInCurrentContext(varId, d);
+    uint16_t varId;
+    readVarId(varId);
+
+    double d = _stack.popDouble();
+    _contextManager.storeDoubleToVar(varId, d);
 }
 
 void InterpreterCodeImpl::executeSTOREIVAR()
 {
     shiftBytecodeIndex(1);
-    uint16_t varId = executedBytecode()->getUInt16(executedBytecodeIndex());
-    shiftBytecodeIndex(2);
-    int32_t i = popInt32FromTOS();
-    storeInt32InCurrentContext(varId, i);
+    uint16_t varId;
+    readVarId(varId);
+
+    int64_t i = _stack.popInt();
+    _contextManager.storeIntToVar(varId, i);
 }
 
 void InterpreterCodeImpl::executeSTORESVAR()
 {
     shiftBytecodeIndex(1);
-    uint16_t varId = executedBytecode()->getUInt16(executedBytecodeIndex());
+    uint16_t varId;
+    readVarId(varId);
+
+    uint16_t stringId = _stack.popStringId();
+    _contextManager.storeStringIdToVar(varId, stringId);
+}
+
+void InterpreterCodeImpl::readCtxIdVarId(uint16_t& outContextId, uint16_t& outVarId) {
+    uint16_t contextId = bytecode()->getUInt16(bytecodeIndex());
     shiftBytecodeIndex(2);
-    uint16_t constantId = popStringFromTOS();
-    storeStringInCurrentContext(varId, constantId);
+    uint16_t varId = bytecode()->getUInt16(bytecodeIndex());
+    shiftBytecodeIndex(2);
+
+    outContextId = contextId;
+    outVarId = varId;
 }
 
 void InterpreterCodeImpl::executeLOADCTXDVAR()
 {
     shiftBytecodeIndex(1);
-    uint16_t scopeId = executedBytecode()->getUInt16(executedBytecodeIndex());
-    shiftBytecodeIndex(2);
-    uint16_t varId = executedBytecode()->getUInt16(executedBytecodeIndex());
-    shiftBytecodeIndex(2);
-    double d = loadDoubleFromContext(scopeId, varId);
-    pushDoubleOnTOS(d);
+    uint16_t contextId, varId;
+    readCtxIdVarId(contextId, varId);
+
+    double d = _contextManager.loadDoubleFromCtxVar(contextId, varId);
+    _stack.pushDouble(d);
 }
 
 void InterpreterCodeImpl::executeLOADCTXIVAR()
 {
     shiftBytecodeIndex(1);
-    uint16_t scopeId = executedBytecode()->getUInt16(executedBytecodeIndex());
-    shiftBytecodeIndex(2);
-    uint16_t varId = executedBytecode()->getUInt16(executedBytecodeIndex());
-    shiftBytecodeIndex(2);
-    int32_t i = loadInt32FromContext(scopeId, varId);
-    pushInt32OnTOS(i);
+    uint16_t contextId, varId;
+    readCtxIdVarId(contextId, varId);
+
+    int64_t i = _contextManager.loadIntFromCtxVar(contextId, varId);
+    _stack.pushInt(i);
 }
 
 void InterpreterCodeImpl::executeLOADCTXSVAR()
 {
     shiftBytecodeIndex(1);
-    uint16_t scopeId = executedBytecode()->getUInt16(executedBytecodeIndex());
-    shiftBytecodeIndex(2);
-    uint16_t varId = executedBytecode()->getUInt16(executedBytecodeIndex());
-    shiftBytecodeIndex(2);
-    uint16_t constantId = loadStringFromContext(scopeId, varId);
-    pushStringOnTOS(constantId);
+    uint16_t contextId, varId;
+    readCtxIdVarId(contextId, varId);
+
+    uint16_t constantId = _contextManager.loadStringIdFromCtxVar(contextId, varId);
+    _stack.pushStringId(constantId);
 }
 
 void InterpreterCodeImpl::executeSTORECTXDVAR()
-{}
+{
+    shiftBytecodeIndex(1);
+    uint16_t contextId, varId;
+    readCtxIdVarId(contextId, varId);
+
+    double d = _stack.popDouble();
+    _contextManager.storeDoubleToCtxVar(contextId, varId, d);
+}
 
 void InterpreterCodeImpl::executeSTORECTXIVAR()
-{}
+{
+    shiftBytecodeIndex(1);
+    uint16_t contextId, varId;
+    readCtxIdVarId(contextId, varId);
 
-void InterpreterCodeImpl::executeSTORECTXSVAR()
-{}
+    int64_t i = _stack.popInt();
+    _contextManager.storeIntToCtxVar(contextId, varId, i);
+}
+
+void InterpreterCodeImpl::executeSTORECTXSVAR() {
+    shiftBytecodeIndex(1);
+    uint16_t contextId, varId;
+    readCtxIdVarId(contextId, varId);
+
+    uint16_t stringId = _stack.popStringId();
+    _contextManager.storeStringIdToCtxVar(contextId, varId, stringId);
+}
 
 void InterpreterCodeImpl::executeDCMP()
 {
     shiftBytecodeIndex(1);
     double d1 = _stack.popDouble();
     double d2 = _stack.popDouble();
-    int32_t cmp = InterpreterCodeImpl::compare(d1, d2);
+    int64_t cmp = InterpreterCodeImpl::compare(d1, d2);
     _stack.pushInt(cmp);
 }
 
 void InterpreterCodeImpl::executeICMP()
 {
     shiftBytecodeIndex(1);
-    int32_t i1 = _stack.getInt();
-    int32_t i2 = _stack.getInt();
-    int32_t cmp = InterpreterCodeImpl::compare(i1, i2);
+    int64_t i1 = _stack.getInt();
+    int64_t i2 = _stack.getInt();
+    int64_t cmp = InterpreterCodeImpl::compare(i1, i2);
     _stack.pushInt(cmp);
 }
 
@@ -602,24 +662,82 @@ void InterpreterCodeImpl::executeJA()
     shiftBytecodeIndex(offset);
 }
 
-void InterpreterCodeImpl::executeIFICMPNE()
-{}
+void InterpreterCodeImpl::executeIFICMPNE() {
+    shiftBytecodeIndex(1);
+    int64_t upper = _stack.popInt();
+    int64_t lower = _stack.popInt();
+    if (upper != lower) {
+        int16_t jump = bytecode()->getInt16(bytecodeIndex());
+        shiftBytecodeIndex(jump);
+    }
+    else {
+        shiftBytecodeIndex(2);
+    }
+}
 
-void InterpreterCodeImpl::executeIFICMPE()
-{}
+void InterpreterCodeImpl::executeIFICMPE() {
+    shiftBytecodeIndex(1);
+    int64_t upper = _stack.popInt();
+    int64_t lower = _stack.popInt();
+    if (upper == lower) {
+        int16_t jump = bytecode()->getInt16(bytecodeIndex());
+        shiftBytecodeIndex(jump);
+    }
+    else {
+        shiftBytecodeIndex(2);
+    }
+}
 
-void InterpreterCodeImpl::executeIFICMPG()
-{}
+void InterpreterCodeImpl::executeIFICMPG() {
+    shiftBytecodeIndex(1);
+    int64_t upper = _stack.popInt();
+    int64_t lower = _stack.popInt();
+    if (upper > lower) {
+        int16_t jump = bytecode()->getInt16(bytecodeIndex());
+        shiftBytecodeIndex(jump);
+    }
+    else {
+        shiftBytecodeIndex(2);
+    }
+}
 
-void InterpreterCodeImpl::executeIFICMPGE()
-{}
+void InterpreterCodeImpl::executeIFICMPGE() {
+    shiftBytecodeIndex(1);
+    int64_t upper = _stack.popInt();
+    int64_t lower = _stack.popInt();
+    if (upper >= lower) {
+        int16_t jump = bytecode()->getInt16(bytecodeIndex());
+        shiftBytecodeIndex(jump);
+    }
+    else {
+        shiftBytecodeIndex(2);
+    }
+}
 
-void InterpreterCodeImpl::executeIFICMPL()
-{}
+void InterpreterCodeImpl::executeIFICMPL( ) {
+    shiftBytecodeIndex(1);
+    int64_t upper = _stack.popInt();
+    int64_t lower = _stack.popInt();
+    if (upper < lower) {
+        int16_t jump = bytecode()->getInt16(bytecodeIndex());
+        shiftBytecodeIndex(jump);
+    }
+    else {
+        shiftBytecodeIndex(2);
+    }
+}
 
-void InterpreterCodeImpl::executeIFICMPLE()
-{
-
+void InterpreterCodeImpl::executeIFICMPLE() {
+    shiftBytecodeIndex(1);
+    int64_t upper = _stack.popInt();
+    int64_t lower = _stack.popInt();
+    if (upper <= lower) {
+        int16_t jump = bytecode()->getInt16(bytecodeIndex());
+        shiftBytecodeIndex(jump);
+    }
+    else {
+        shiftBytecodeIndex(2);
+    }
 }
 
 void InterpreterCodeImpl::executeDUMP()
@@ -668,7 +786,7 @@ void InterpreterCodeImpl::executeCALLNATIVE()
 {
     shiftBytecodeIndex(1);
     uint16_t nativeId = bytecode()->getUInt16(bytecodeIndex());
-//    executeNativeFunction(_natives[nativeId]);
+    //    executeNativeFunction(_natives[nativeId]);
     shiftBytecodeIndex(2);
 }
 
@@ -684,7 +802,9 @@ void InterpreterCodeImpl::executeRETURN()
 
 void InterpreterCodeImpl::executeBREAK()
 {
+    shiftBytecodeIndex(1);
     //make breakpoint for debugger, may be wait for user's input
+    getchar();
 }
 
 

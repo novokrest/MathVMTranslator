@@ -70,7 +70,6 @@ SOURCES       = main.cpp \
 		2/bytecodegenerator.cpp \
 		2/typeinferencer.cpp \
 		2/interpretercode.cpp \
-		2/stack.cpp \
 		2/contextmanager.cpp 
 OBJECTS       = main.o \
 		ast.o \
@@ -97,7 +96,6 @@ OBJECTS       = main.o \
 		bytecodegenerator.o \
 		typeinferencer.o \
 		interpretercode.o \
-		stack.o \
 		contextmanager.o
 DIST          = /usr/lib/x86_64-linux-gnu/qt5/mkspecs/features/spec_pre.prf \
 		/usr/lib/x86_64-linux-gnu/qt5/mkspecs/common/shell-unix.conf \
@@ -365,7 +363,9 @@ translator.o: vm/translator.cpp include/mathvm.h \
 		vm/scanner.h \
 		include/visitors.h \
 		2/bytecodegenerator.h \
-		2/interpretercode.h
+		2/interpretercode.h \
+		2/contextmanager.h \
+		2/exceptions.h
 	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o translator.o vm/translator.cpp
 
 utils.o: vm/utils.cpp include/mathvm.h
@@ -523,26 +523,29 @@ bytecodegenerator.o: 2/bytecodegenerator.cpp 2/bytecodegenerator.h \
 		include/mathvm.h \
 		include/visitors.h \
 		include/ast.h \
-		2/interpretercode.h
+		2/interpretercode.h \
+		2/contextmanager.h \
+		2/exceptions.h
 	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o bytecodegenerator.o 2/bytecodegenerator.cpp
 
 typeinferencer.o: 2/typeinferencer.cpp 2/bytecodegenerator.h \
 		include/mathvm.h \
 		include/visitors.h \
 		include/ast.h \
-		2/interpretercode.h
+		2/interpretercode.h \
+		2/contextmanager.h \
+		2/exceptions.h
 	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o typeinferencer.o 2/typeinferencer.cpp
 
 interpretercode.o: 2/interpretercode.cpp 2/interpretercode.h \
-		include/mathvm.h
+		include/mathvm.h \
+		2/contextmanager.h \
+		2/exceptions.h
 	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o interpretercode.o 2/interpretercode.cpp
 
-stack.o: 2/stack.cpp 2/interpretercode.h \
-		include/mathvm.h
-	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o stack.o 2/stack.cpp
-
 contextmanager.o: 2/contextmanager.cpp 2/contextmanager.h \
-		include/mathvm.h
+		include/mathvm.h \
+		2/exceptions.h
 	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o contextmanager.o 2/contextmanager.cpp
 
 ####### Install

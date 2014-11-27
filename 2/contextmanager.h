@@ -2,6 +2,7 @@
 #define CONTEXTMANAGER_H
 
 #include "mathvm.h"
+#include "exceptions.h"
 
 namespace mathvm {
 
@@ -9,7 +10,7 @@ class VarValue
 {
     union {
         double d;
-        uint32_t i;
+        uint64_t i;
         uint16_t id;
     } _value;
 
@@ -18,39 +19,42 @@ class VarValue
 public:
     VarValue();
     VarValue(double d);
-    VarValue(int32_t i);
+    VarValue(int64_t i);
     VarValue(uint16_t id);
 
     VarType type();
 
     double doubleValue();
-    int32_t intValue();
+    int64_t intValue();
     uint16_t stringIdValue();
 
     void setDouble(double d);
-    void setInt(int32_t i);
+    void setInt(int64_t i);
     void setStringId(uint16_t id);
 };
 
 class InterpreterStack
 {
     vector<VarValue> _elements;
-    uint32_t _current;
+    uint64_t _current;
 
 public:
+    void pushElement(VarValue element);
     void pushDouble(double d);
-    void pushInt(int32_t i);
+    void pushInt(int64_t i);
     void pushStringId(uint16_t id);
 
     VarValue getElement();
     double getDouble();
-    int32_t getInt();
+    int64_t getInt();
     uint16_t getStringId();
 
-    void popElement();
+    VarValue popElement();
     double popDouble();
-    int32_t popInt();
+    int64_t popInt();
     uint16_t popStringId();
+
+    void swapTwoUpperElements();
 };
 
 class ContextManager
@@ -75,17 +79,17 @@ public:
 
     double loadDoubleFromCtxVar(uint16_t contextId, uint16_t varId);
     double loadDoubleFromVar(uint16_t varId);
-    int32_t loadIntFromCtxVar(uint16_t contextId, uint16_t varId);
-    int32_t loadIntFromVar(uint16_t varId);
-    uint16_t loadStringFromCtxVar(uint16_t contextId, uint16_t varId);
-    uint16_t loadStringFromVar(uint16_t varId);
+    int64_t loadIntFromCtxVar(uint16_t contextId, uint16_t varId);
+    int64_t loadIntFromVar(uint16_t varId);
+    uint16_t loadStringIdFromCtxVar(uint16_t contextId, uint16_t varId);
+    uint16_t loadStringIdFromVar(uint16_t varId);
 
     void storeDoubleToCtxVar(uint16_t contextId, uint16_t varId, double dvalue);
     void storeDoubleToVar(uint16_t varId, double dvalue);
-    void storeIntToCtxVar(uint16_t contextId, uint16_t varId, int32_t ivalue);
-    void storeIntToVar(uint16_t varId, int32_t ivalue);
-    void storeStringToCtxVar(uint16_t contextId, uint16_t varId, uint16_t svalue);
-    void storeStringToVar(uint16_t varId, uint16_t svalue);
+    void storeIntToCtxVar(uint16_t contextId, uint16_t varId, int64_t ivalue);
+    void storeIntToVar(uint16_t varId, int64_t ivalue);
+    void storeStringIdToCtxVar(uint16_t contextId, uint16_t varId, uint16_t svalue);
+    void storeStringIdToVar(uint16_t varId, uint16_t svalue);
 };
 
 

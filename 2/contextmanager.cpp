@@ -3,8 +3,6 @@
 
 namespace mathvm {
 
-class InterpretationException;
-
 VarValue::VarValue()
     :_type(VT_INVALID) {
 }
@@ -14,7 +12,7 @@ VarValue::VarValue(double d)
     _value.d = d;
 }
 
-VarValue::VarValue(int32_t i)
+VarValue::VarValue(int64_t i)
     : _type(VT_INT) {
     _value.i = i;
 }
@@ -33,7 +31,7 @@ double VarValue::doubleValue() {
     return _value.d;
 }
 
-int32_t VarValue::intValue() {
+int64_t VarValue::intValue() {
     assert(_type == VT_INT);
     return _value.i;
 }
@@ -48,7 +46,7 @@ void VarValue::setDouble(double d) {
     _value.d = d;
 }
 
-void VarValue::setInt(int32_t i) {
+void VarValue::setInt(int64_t i) {
     _type = VT_INT;
     _value.i = i;
 }
@@ -58,11 +56,15 @@ void VarValue::setStringId(uint16_t id) {
     _value.id = id;
 }
 
+void InterpreterStack::pushElement(VarValue element) {
+    _elements.push_back(element);
+}
+
 void InterpreterStack::pushDouble(double d) {
     _elements.push_back(VarValue(d));
 }
 
-void InterpreterStack::pushInt(int32_t i) {
+void InterpreterStack::pushInt(int64_t i) {
     _elements.push_back(VarValue(i));
 }
 
@@ -70,7 +72,7 @@ void InterpreterStack::pushStringId(uint16_t id) {
     _elements.push_back(VarValue(id));
 }
 
-VarValue& InterpreterStack::getElement() {
+VarValue InterpreterStack::getElement() {
     return _elements.back();
 }
 
@@ -78,7 +80,7 @@ double InterpreterStack::getDouble() {
     return _elements.back().doubleValue();
 }
 
-int32_t InterpreterStack::getInt() {
+int64_t InterpreterStack::getInt() {
     return _elements.back().intValue();
 }
 
@@ -86,8 +88,12 @@ uint16_t InterpreterStack::getStringId() {
     return _elements.back().stringIdValue();
 }
 
-void InterpreterStack::popElement() {
+VarValue InterpreterStack::popElement() {
+    VarValue element = _elements.back();
     _elements.pop_back();
+
+    return element;
+
 }
 
 double InterpreterStack::popDouble() {
@@ -97,8 +103,8 @@ double InterpreterStack::popDouble() {
     return d;
 }
 
-int32_t InterpreterStack::popInt() {
-    int32_t i = getInt();
+int64_t InterpreterStack::popInt() {
+    int64_t i = getInt();
     popElement();
 
     return i;
@@ -109,6 +115,13 @@ uint16_t InterpreterStack::popStringId() {
     popElement();
 
     return id;
+}
+
+void InterpreterStack::swapTwoUpperElements() {
+    VarValue upper = popElement();
+    VarValue lower = popElement();
+    pushElement(upper);
+    pushElement(lower);
 }
 
 void ContextManager::checkContext(uint16_t contextId) {
@@ -126,7 +139,7 @@ void ContextManager::checkCtxVar(uint16_t contextId, uint16_t varId) {
     }
 }
 
-Context& ContextManager::getContext(uint16_t contextId) {
+ContextManager::Context& ContextManager::getContext(uint16_t contextId) {
     checkContext(contextId);
     return _contextById[contextId].back();
 }
@@ -144,7 +157,7 @@ void ContextManager::removeContext(uint16_t contextId) {
 }
 
 void ContextManager::setCurrentContextId(uint16_t contextId) {
-    _contextById = contextId;
+    _currentContextId = contextId;
 }
 
 uint16_t ContextManager::getCurrentContextId() {
@@ -153,29 +166,29 @@ uint16_t ContextManager::getCurrentContextId() {
 
 double ContextManager::loadDoubleFromCtxVar(uint16_t contextId, uint16_t varId) {
     checkCtxVar(contextId, varId);
-    return getContext(contextId).doubleValue();
+    return getContext(contextId).at(varId).doubleValue();
 }
 
 double ContextManager::loadDoubleFromVar(uint16_t varId) {
     return loadDoubleFromCtxVar(getCurrentContextId(), varId);
 }
 
-int32_t ContextManager::loadIntFromCtxVar(uint16_t contextId, uint16_t varId) {
+int64_t ContextManager::loadIntFromCtxVar(uint16_t contextId, uint16_t varId) {
     checkCtxVar(contextId, varId);
-    return getContext(contextId).intValue();
+    return getContext(contextId).at(varId).intValue();
 }
 
-int32_t ContextManager::loadIntFromVar(uint16_t varId) {
+int64_t ContextManager::loadIntFromVar(uint16_t varId) {
     return loadIntFromCtxVar(getCurrentContextId(), varId);
 }
 
-uint16_t ContextManager::loadStringFromCtxVar(uint16_t contextId, uint16_t varId) {
+uint16_t ContextManager::loadStringIdFromCtxVar(uint16_t contextId, uint16_t varId) {
     checkCtxVar(contextId, varId);
-    return getContext(contextId).stringIdValue();
+    return getContext(contextId).at(varId).stringIdValue();
 }
 
-uint16_t ContextManager::loadStringFromVar(uint16_t varId) {
-    return loadStringFromCtxVar(getCurrentContextId(), varId);
+uint16_t ContextManager::loadStringIdFromVar(uint16_t varId) {
+    return loadStringIdFromCtxVar(getCurrentContextId(), varId);
 }
 
 void ContextManager::storeDoubleToCtxVar(uint16_t contextId, uint16_t varId, double dvalue) {
@@ -187,22 +200,22 @@ void ContextManager::storeDoubleToVar(uint16_t varId, double dvalue) {
     storeDoubleToCtxVar(getCurrentContextId(), varId, dvalue);
 }
 
-void ContextManager::storeIntToCtxVar(uint16_t contextId, uint16_t varId, int32_t ivalue) {
+void ContextManager::storeIntToCtxVar(uint16_t contextId, uint16_t varId, int64_t ivalue) {
     Context& context = getContext(contextId);
     context[varId].setInt(ivalue);
 }
 
-void ContextManager::storeIntToVar(uint16_t varId, int32_t ivalue) {
+void ContextManager::storeIntToVar(uint16_t varId, int64_t ivalue) {
     storeIntToCtxVar(getCurrentContextId(), varId, ivalue);
 }
 
-void ContextManager::storeStringToCtxVar(uint16_t contextId, uint16_t varId, uint16_t svalue) {
+void ContextManager::storeStringIdToCtxVar(uint16_t contextId, uint16_t varId, uint16_t svalue) {
     Context& context = getContext(contextId);
     context[varId].setStringId(svalue);
 }
 
-void ContextManager::storeStringToVar(uint16_t varId, uint16_t svalue) {
-    storeStringToCtxVar(getCurrentContextId(), varId, svalue);
+void ContextManager::storeStringIdToVar(uint16_t varId, uint16_t svalue) {
+    storeStringIdToCtxVar(getCurrentContextId(), varId, svalue);
 }
 
 }
