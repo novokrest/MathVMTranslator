@@ -29,7 +29,8 @@ SOURCES += main.cpp \
     2/bytecodegenerator.cpp \
     2/typeinferencer.cpp \
     2/interpretercode.cpp \
-    2/contextmanager.cpp
+    2/contextmanager.cpp \
+    2/functioncontext.cpp
 
 HEADERS += \
     vm/parser.h \

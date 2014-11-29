@@ -19,21 +19,21 @@ Bytecode* BytecodeGenerator::bytecode() {
     return _bytecodeStack.back();
 }
 
-inline Scope* BytecodeGenerator::currentScope() {
-    return _currentScope;
-}
+//inline Scope* BytecodeGenerator::currentScope() {
+//    return _currentScope;
+//}
 
-uint16_t BytecodeGenerator::currentScopeId() {
-    return _currentScopeId;
-}
+//uint16_t BytecodeGenerator::currentScopeId() {
+//    return _currentScopeId;
+//}
 
-void BytecodeGenerator::setCurrentScope(Scope *scope) {
-    _currentScope = scope;
-}
+//void BytecodeGenerator::setCurrentScope(Scope *scope) {
+//    _currentScope = scope;
+//}
 
-void BytecodeGenerator::setCurrentScopeId(uint16_t scopeId) {
-    _currentScopeId = scopeId;
-}
+//void BytecodeGenerator::setCurrentScopeId(uint16_t scopeId) {
+//    _currentScopeId = scopeId;
+//}
 
 VarType BytecodeGenerator::resolveType(AstNode *node) {
     return _typeInferencer.resolveType(node);
@@ -412,8 +412,10 @@ void BytecodeGenerator::visitStoreNode(StoreNode *node) {
     const AstVar* var = node->var();
     VarType varType = var->type();
 
-    uint16_t scopeId = currentScopeId();
-    uint16_t varId = getVarId(scopeId, var->name());
+    ScopeVarId scopeVarId = findScopeVarIdByName(var->name());
+
+    uint16_t scopeId = scopeVarId.first;
+    uint16_t varId = scopeVarId.second;
 
     AstNode* value = node->value();
     value->visit(this); // after this operation on TOS lies value which i must store
@@ -435,28 +437,10 @@ void BytecodeGenerator::visitStoreNode(StoreNode *node) {
 void BytecodeGenerator::visitLoadNode(LoadNode *node)
 {
     const AstVar* var = node->var();
-    pair<uint16_t, uint16_t> scopeVarId = findScopeVarId(currentScope(), var->name());
+    ScopeVarId scopeVarId = findScopeVarIdByName(var->name());
     uint16_t scopeId = scopeVarId.first;
     uint16_t varId = scopeVarId.second;
     loadValueFromVar(scopeId, varId, var->type());
-}
-
-void BytecodeGenerator::visitBlockNode(BlockNode *node) {
-
-    Scope* prevScope = currentScope();
-    uint16_t prevScopeId = currentScopeId();
-
-    Scope* blockScope = node->scope();
-    uint16_t blockScopeId = registerScope(blockScope);
-    setCurrentScope(blockScope);
-    setCurrentScopeId(blockScopeId);
-
-    for (size_t i = 0; i < node->nodes(); ++i) {
-        node->nodeAt(i)->visit(this);
-    }
-
-    setCurrentScope(prevScope);
-    setCurrentScopeId(prevScopeId);
 }
 
 void BytecodeGenerator::visitIfNode(IfNode *node) {
@@ -507,38 +491,38 @@ void BytecodeGenerator::visitWhileNode(WhileNode *node) {
     bytecode()->add(BC_POP);
 }
 
-uint16_t BytecodeGenerator::getVarId(uint16_t scopeId, string const& name) {
-    VarMap& vars = _vars[scopeId];
-    for (VarMap::iterator varIt = vars.begin(); varIt != vars.end(); ++varIt) {
-        const string& varName = varIt->first->name();
-        if (varName == name) {
-            return varIt->second;
-        }
-    }
+//uint16_t BytecodeGenerator::getVarId(uint16_t scopeId, string const& name) {
+//    VarMap& vars = _vars[scopeId];
+//    for (VarMap::iterator varIt = vars.begin(); varIt != vars.end(); ++varIt) {
+//        const string& varName = varIt->first->name();
+//        if (varName == name) {
+//            return varIt->second;
+//        }
+//    }
 
-    throw TranslationException();
-}
+//    throw TranslationException();
+//}
 
-std::pair<uint16_t, uint16_t> BytecodeGenerator::findScopeVarId(Scope* scope, const string& varName) {
-    while (scope != 0) {
-        uint16_t scopeId = _scopes[scope];
-        Scope::VarIterator varIt(scope);
-        while(varIt.hasNext()) {
-            AstVar* var = varIt.next();
-            if (var->name() == varName) {
-                uint16_t varId = getVarId(scopeId, varName);
-                return std::pair<uint16_t, uint16_t>(scopeId, varId);
-            }
-        }
-        scope = scope->parent();
-    }
+//std::pair<uint16_t, uint16_t> BytecodeGenerator::findScopeVarId(Scope* scope, const string& varName) {
+//    while (scope != 0) {
+//        uint16_t scopeId = _scopes[scope];
+//        Scope::VarIterator varIt(scope);
+//        while(varIt.hasNext()) {
+//            AstVar* var = varIt.next();
+//            if (var->name() == varName) {
+//                uint16_t varId = getVarId(scopeId, varName);
+//                return std::pair<uint16_t, uint16_t>(scopeId, varId);
+//            }
+//        }
+//        scope = scope->parent();
+//    }
 
-    throw TranslationException();
-}
+//    throw TranslationException();
+//}
 
-std::pair<uint16_t, uint16_t> BytecodeGenerator::findScopeVarId(const string &name) {
-    return findScopeVarId(currentScope(), name);
-}
+//std::pair<uint16_t, uint16_t> BytecodeGenerator::findScopeVarId(const string &name) {
+//    return findScopeVarId(currentScope(), name);
+//}
 
 void BytecodeGenerator::visitForNode(ForNode *node) {
     const AstVar* inVar = node->var();
@@ -553,15 +537,15 @@ void BytecodeGenerator::visitForNode(ForNode *node) {
     addCast(rangeType, inVarType); // left on TOS, right below
 
     BlockNode* forBlock = node->body();
-    Scope* forScope = forBlock->scope();
-    uint16_t blockScopeId = registerScope(forScope);
+//    Scope* forScope = forBlock->scope();
+    uint16_t blockScopeId = currentFunctionTranslationContext()->getScopeId();
 
-    std::pair<uint16_t, uint16_t> inScopeVarId = findScopeVarId(forScope, inVarName);
+    ScopeVarId inScopeVarId = findScopeVarIdByName(inVarName);
     uint16_t scopeId = inScopeVarId.first;
     uint16_t inVarId = inScopeVarId.second;
 
-    uint16_t leftRangeId = registerVar(blockScopeId, new AstVar("<left>", VT_INT, currentScope()));
-    uint16_t rightRangeId = registerVar(blockScopeId, new AstVar("<right>", VT_INT, currentScope()));
+    uint16_t leftRangeId = currentFunctionTranslationContext()->addVar("<left>");
+    uint16_t rightRangeId = currentFunctionTranslationContext()->addVar("<right>");
 
     storeValueToVar(blockScopeId, leftRangeId, inVarType);
     storeValueToVar(blockScopeId, rightRangeId, inVarType);
@@ -590,9 +574,9 @@ void BytecodeGenerator::visitForNode(ForNode *node) {
     forEnd.bind(bytecode()->length());
 }
 
-uint16_t BytecodeGenerator::translatedFunctionId() {
-    return _bcFunctionStack.back();
-}
+//uint16_t BytecodeGenerator::translatedFunctionId() {
+//    return _bcFunctionStack.back();
+//}
 
 void BytecodeGenerator::addReturn()
 {
@@ -600,7 +584,7 @@ void BytecodeGenerator::addReturn()
 }
 
 void BytecodeGenerator::visitReturnNode(ReturnNode *node) {
-    uint16_t id = translatedFunctionId();
+    uint16_t id = currentFunctionTranslationContext()->getScopeId();  //translatedFunctionId();
     BytecodeFunction* bcFunction = _bcFunctions[id];
     VarType targetReturnType = bcFunction->returnType();
 
@@ -640,146 +624,282 @@ void BytecodeGenerator::visitPrintNode(PrintNode *node) {
 }
 
 void BytecodeGenerator::visitNativeCallNode(NativeCallNode *node) {
-//    uint16_t id = _nativeById.size();
-//    _nativeById[node->nativeName()] = id;
-
-//    NativeFunctionDescriptor nativeDesc(node->nativeName(), node->nativeSignature(), 0);
-//    _natives.push_back(nativeDesc);
-
-    _code->makeNativeFunction(node->nativeName(), node->nativeSignature(), NULL);
 }
 
-AstFunction* BytecodeGenerator::getFunction(Scope* scope, const string& name) {
-    while(scope != 0) {
-        Scope::FunctionIterator functionIt(scope);
-        while(functionIt.hasNext()) {
-            AstFunction* astFunction = functionIt.next();
-            if (astFunction->name() == name) {
-                return astFunction;
-            }
-        }
-        scope = scope->parent();
-    }
+//AstFunction* BytecodeGenerator::getFunction(Scope* scope, const string& name) {
+//    while(scope != 0) {
+//        Scope::FunctionIterator functionIt(scope);
+//        while(functionIt.hasNext()) {
+//            AstFunction* astFunction = functionIt.next();
+//            if (astFunction->name() == name) {
+//                return astFunction;
+//            }
+//        }
+//        scope = scope->parent();
+//    }
 
-    throw TranslationException();
-}
+//    throw TranslationException();
+//}
 
-uint16_t BytecodeGenerator::getFunctionId(Scope* scope, const string& name) {
-    AstFunction* astFunction = getFunction(scope, name);
-    return _astFunctions[astFunction];
-}
+//uint16_t BytecodeGenerator::getFunctionId(Scope* scope, const string& name) {
+//    AstFunction* astFunction = getFunction(scope, name);
+//    return _astFunctions[astFunction];
+//}
 
 void BytecodeGenerator::visitCallNode(CallNode *node) {
-    string callName = node->name();
-    AstFunction* function = getFunction(currentScope(), callName);
-    uint16_t id = _astFunctions[function];
-    bytecode()->add(BC_CALL);
-    bytecode()->addInt16(id);
-    if (node->parametersNumber() != function->parametersNumber()) {
-        throw TranslationException();
+    uint16_t calleeId;
+
+    if (isNative(node->name())) {
+        calleeId = getNativeIdByName(node->name());
+        Signature* signature;
+        assert(signature->size() > 0);
+        for (int i = signature->size() - 1; i > 0; --i) {
+            AstNode* arg = node->parameterAt(i);
+            arg->visit(this);
+            VarType argType = resolveType(arg);
+            VarType paramType = signature->at(i).first;
+            addCast(argType, paramType);
+        }
+
+        bytecode()->add(BC_CALLNATIVE);
+    }
+    else {
+        calleeId = getFunctionIdByName(node->name());
+        BytecodeFunction* bcFunction = _bcFunctions.at(calleeId);
+
+        for (int i = node->parametersNumber() - 1; i > -1; --i) {
+            AstNode* arg = node->parameterAt(i);
+            arg->visit(this);
+            VarType argType = resolveType(arg);
+            VarType paramType = bcFunction->parameterType(i);
+            addCast(argType, paramType);
+        }
+
+        bytecode()->add(BC_CALL);
     }
 
-    for (int i = node->parametersNumber() - 1; i > -1; --i) {
-        AstNode* arg = node->parameterAt(i);
-        arg->visit(this);
-        VarType argType = resolveType(arg);
-        VarType paramType = function->parameterType(i);
-        addCast(argType, paramType);
-    }
+    bytecode()->addInt16(calleeId);
 }
 
+void BytecodeGenerator::visitBlockNode(BlockNode *node) {
 
-//arguments lies on stack in reverse order: first on TOS, than below second and etc.
-//regster function name
-void BytecodeGenerator::visitFunctionNode(FunctionNode *node) {
-    Scope* signatureScope = node->body()->scope()->parent();
-    uint16_t signatureScopeId = registerScope(signatureScope);
+    Scope* scope = node->scope();
+    FunctionTranslationContext* context = currentFunctionTranslationContext();
+    context->registerScopeVars(scope);
+    registerScopeFunctions(scope);
 
-    Scope::VarIterator signatureVarIt(signatureScope, false);
-    while (signatureVarIt.hasNext()) {
-        AstVar* var = signatureVarIt.next();
-        uint16_t varId = registerVar(signatureScopeId, var);
-        storeValueToVar(signatureScopeId, varId, var->type());
+    for (size_t i = 0; i < node->nodes(); ++i) {
+        node->nodeAt(i)->visit(this);
     }
 
-    node->body()->visit(this);
+    translateScopeFunctions(scope);
+
+    context->unregisterScopeVars(scope);
 }
 
-void BytecodeGenerator::visitAstFunction(AstFunction* astFunction) {
-    uint16_t id = registerFunction(astFunction);
-    BytecodeFunction* bcFunction = _bcFunctions[id];
-
-    FunctionNode* function = astFunction->node();
-    Scope* signatureScope = function->body()->scope()->parent();
-    registerScope(signatureScope);
-    Scope* bodyScope = function->body()->scope();
-    uint16_t bodyScopeId = registerScope(bodyScope);
-
-    bcFunction->setScopeId(bodyScopeId);
-
-    _bcFunctionStack.push_back(id);
-    _bytecodeStack.push_back(bcFunction->bytecode());
-
-    function->visit(this);
-
-    _bytecodeStack.pop_back();
-    _bcFunctionStack.pop_back();
-}
-
-uint16_t BytecodeGenerator::registerFunction(AstFunction* astFunction) {
-    if (_astFunctions.find(astFunction) != _astFunctions.end()) {
-        return _astFunctions[astFunction];
+void BytecodeGenerator::registerScopeFunctions(Scope* scope) {
+    Scope::FunctionIterator funcIt(scope);
+    while(funcIt.hasNext()) {
+        AstFunction* function = funcIt.next();
+        if (function->node()->body()->nodeAt(0)->isNativeCallNode()) {
+            registerNativeFunction(function->node()->body()->nodeAt(0)->asNativeCallNode());
+        }
+        else {
+            registerFunction(function);
+        }
     }
-    uint16_t id = _bcFunctions.size();
-    _astFunctions[astFunction] = id;
+
+}
+
+void BytecodeGenerator::registerNativeFunction(NativeCallNode* native) {
+    uint16_t nativeId = _code->makeNativeFunction(native->nativeName(), native->nativeSignature(), NULL);
+    _nativeIdByName[native->nativeName()] = nativeId;
+}
+
+void BytecodeGenerator::registerFunction(AstFunction *astFunction) {
+    assert(_functionIdByName.find(astFunction->name()) == _functionIdByName.end());
+
     BytecodeFunction* bcFunction = new BytecodeFunction(astFunction);
-    //bcFunction->assignId(id);
+    bcFunction->assignId(_bcFunctions.size());
     _bcFunctions.push_back(bcFunction);
 
-    return id;
+    _functionIdByName[bcFunction->name()] = bcFunction->id();
 }
 
-uint16_t BytecodeGenerator::registerVar(uint16_t scopeId, AstVar* var) {
-    VarMap& vars = _vars[scopeId];
-    uint16_t id = vars.size();
-    vars[var] = id;
-
-    return id;
+void BytecodeGenerator::translateScopeFunctions(Scope *scope) {
+    Scope::FunctionIterator funcIt(scope);
+    while(funcIt.hasNext()) {
+        AstFunction* function = funcIt.next();
+        function->node()->visit(this);
+    }
 }
 
-uint16_t BytecodeGenerator::registerScope(Scope * scope) {
-    if (_scopes.find(scope) != _scopes.end()) {
-        return _scopes[scope];
-    }
-    uint16_t id = _scopes.size();
-    _scopes[scope] = id;
-
-    Scope::FunctionIterator functionIt(scope);
-    while(functionIt.hasNext()) {
-        AstFunction* astFunction = functionIt.next();
-        registerFunction(astFunction);
-    }
-
-    Scope::VarIterator varIt(scope);
-    while(varIt.hasNext()) {
-        AstVar* var = varIt.next();
-        registerVar(id, var);
-    }
-
-    functionIt = Scope::FunctionIterator(scope);
-    while(functionIt.hasNext()) {
-        AstFunction* astFunction = functionIt.next();
-        visitAstFunction(astFunction);
-    }
-
-    return id;
+bool BytecodeGenerator::isNative(const string &name) {
+    return _nativeIdByName.find(name) != _nativeIdByName.end();
 }
+
+uint16_t BytecodeGenerator::getNativeIdByName(const string &name) {
+    assert(_nativeIdByName.find(name) != _nativeIdByName.end());
+    return _nativeIdByName[name];
+}
+
+uint16_t BytecodeGenerator::getFunctionIdByName(const string &name) {
+    assert(_functionIdByName.find(name) != _functionIdByName.end());
+    return _functionIdByName[name];
+}
+
+/*
+ * This FunctionNode contain really function, not native
+*/
+void BytecodeGenerator::collectArgs(FunctionNode *node) {
+    for (size_t i = 0; i < node->parametersNumber(); ++i) {
+        ScopeVarId scopeVarId = findScopeVarIdByName(node->parameterName(i));
+        VarType type = node->parameterType(i);
+        addStringIntDoubleInsn(type, BC_STORECTXSVAR, BC_STORECTXIVAR, BC_STORECTXDVAR);
+        bytecode()->addUInt16(scopeVarId.first);
+        bytecode()->addUInt16(scopeVarId.second);
+    }
+}
+
+/*
+ * Start translation of function with specified unique name
+ * Function with specified name (unique!) must be already registered
+*/
+void BytecodeGenerator::visitFunctionNode(FunctionNode *node) { //this can contain NativeCallNode
+    assert(_functionIdByName.find(node->name()) != _functionIdByName.end());
+
+    if (isNative(node->name())) {
+        return;
+    }
+
+    uint16_t functionId = _functionIdByName[node->name()];
+    BytecodeFunction* bcFunction = _bcFunctions[functionId];
+    bcFunction->setScopeId(functionId);
+    _bytecodeStack.push_back(bcFunction->bytecode());
+
+    FunctionTranslationContext* ftcontext = addNewFunctionTranslationContext(functionId);
+    ftcontext->registerSignature(node->signature());
+
+    collectArgs(node);
+    node->body()->visit(this);
+
+    ftcontext->unregisterSignature(node->signature());
+    removeLastFunctionTranslationContext();
+    _bytecodeStack.pop_back();
+}
+
+FunctionTranslationContext* BytecodeGenerator::addNewFunctionTranslationContext(uint16_t functionScopeId) {
+    FunctionTranslationContext* context = new FunctionTranslationContext(functionScopeId);
+    _contexts.push_back(context);
+
+    return context;
+}
+
+void BytecodeGenerator::removeLastFunctionTranslationContext() {
+    FunctionTranslationContext* context = _contexts.back();
+    delete context;
+    _contexts.pop_back();
+}
+
+FunctionTranslationContext* BytecodeGenerator::currentFunctionTranslationContext() {
+    return _contexts.back();
+}
+
+ScopeVarId BytecodeGenerator::findScopeVarIdByName(const string &name) {
+    for (std::vector<FunctionTranslationContext*>::reverse_iterator contextRevIt = _contexts.rbegin(); contextRevIt != _contexts.rend(); ++contextRevIt) {
+        FunctionTranslationContext* context = *contextRevIt;
+        if (context->varNameExist(name)) {
+            return context->getScopeVarId(name);
+        }
+    }
+    throw TranslationException("Couldn't find var with specified name");
+}
+
+//void BytecodeGenerator::visitAstFunction(AstFunction* astFunction) {
+//    uint16_t id = registerFunction(astFunction);
+//    BytecodeFunction* bcFunction = _bcFunctions[id];
+
+//    FunctionNode* function = astFunction->node();
+//    Scope* signatureScope = function->body()->scope()->parent();
+//    registerScope(signatureScope);
+//    Scope* bodyScope = function->body()->scope();
+//    uint16_t bodyScopeId = registerScope(bodyScope);
+
+//    bcFunction->setScopeId(bodyScopeId);
+
+//    _bcFunctionStack.push_back(id);
+//    _bytecodeStack.push_back(bcFunction->bytecode());
+
+//    function->visit(this);
+
+//    _bytecodeStack.pop_back();
+//    _bcFunctionStack.pop_back();
+//}
+
+//uint16_t BytecodeGenerator::registerFunction(AstFunction* astFunction) {
+//    if (_astFunctions.find(astFunction) != _astFunctions.end()) {
+//        return _astFunctions[astFunction];
+//    }
+//    uint16_t id = _bcFunctions.size();
+//    _astFunctions[astFunction] = id;
+//    BytecodeFunction* bcFunction = new BytecodeFunction(astFunction);
+//    //bcFunction->assignId(id);
+//    _bcFunctions.push_back(bcFunction);
+
+//    return id;
+//}
+
+//uint16_t BytecodeGenerator::registerVar(uint16_t scopeId, AstVar* var) {
+//    VarMap& vars = _vars[scopeId];
+//    uint16_t id = vars.size();
+//    vars[var] = id;
+
+//    return id;
+//}
+
+//uint16_t BytecodeGenerator::registerScope(Scope * scope) {
+//    if (_scopes.find(scope) != _scopes.end()) {
+//        return _scopes[scope];
+//    }
+//    uint16_t id = _scopes.size();
+//    _scopes[scope] = id;
+
+//    Scope::FunctionIterator functionIt(scope);
+//    while(functionIt.hasNext()) {
+//        AstFunction* astFunction = functionIt.next();
+//        registerFunction(astFunction);
+//    }
+
+//    Scope::VarIterator varIt(scope);
+//    while(varIt.hasNext()) {
+//        AstVar* var = varIt.next();
+//        registerVar(id, var);
+//    }
+
+//    functionIt = Scope::FunctionIterator(scope);
+//    while(functionIt.hasNext()) {
+//        AstFunction* astFunction = functionIt.next();
+//        visitAstFunction(astFunction);
+//    }
+
+//    return id;
+//}
+
+//void FunctionScopeManager::registerScopeVars(Scope* scope)
+//{
+//    Scope::VarIterator varIt(scope);
+//    while (varIt.hasNext()) {
+//        AstVar* var = varIt.next;
+//        VarNameIds& ids =
+//    }
+//}
 
 InterpreterCodeImpl* BytecodeGenerator::makeBytecode(AstFunction* top) {
     _code = new InterpreterCodeImpl();
-    visitAstFunction(top);
+    registerFunction(top);
+    top->node()->visit(this);
 
-    for (BytecodeFunctionVec::const_iterator bcFunctionIt = _bcFunctions.begin(); bcFunctionIt != _bcFunctions.end(); ++bcFunctionIt) {
+    for (std::vector<BytecodeFunction*>::const_iterator bcFunctionIt = _bcFunctions.begin(); bcFunctionIt != _bcFunctions.end(); ++bcFunctionIt) {
         _code->addFunction(*bcFunctionIt);
     }
 

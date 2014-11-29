@@ -48,6 +48,42 @@ public:
 #undef VISITOR_FUNCTION
 };
 
+typedef std::pair<uint16_t, uint16_t> ScopeVarId;
+
+class FunctionTranslationContext
+{
+//    typedef std::pair<uint16_t, uint16_t> ScopeVarId;
+    typedef std::vector<uint16_t> VarIds;
+    typedef std::map<string, VarIds> VarNameToIdsMap;
+
+    uint16_t _scopeId; // function scopeId
+
+    VarNameToIdsMap _varNameToIds;
+    uint16_t _freeVarId;
+
+    uint16_t getFreeVarId();
+
+    public:
+    FunctionTranslationContext(uint16_t scopeId);
+
+    void registerSignature(const Signature& signature);
+    void registerScope(Scope* scope); // FOR and IF ELSE scopes
+    void registerScopeVars(Scope* scope);
+    void unregisterSignature(const Signature& signature);
+    void unregisterScope(Scope* scope); // FOR and IF ELSE scopes
+    void unregisterScopeVars(Scope* scope);
+
+    uint16_t addVar(const string& name);
+    void addVarId(const string& name, uint16_t id);
+    void removeVarId(const string& name);
+
+    bool varNameExist(const string& varName);
+    uint16_t getVarId(const string& varName);
+    uint16_t getScopeId();
+    ScopeVarId getScopeVarId(const string& varName);
+
+};
+
 class BytecodeGenerator : public AstVisitor
 {
     class BytecodeVar
@@ -79,45 +115,36 @@ class BytecodeGenerator : public AstVisitor
     void storeValueToVar(uint16_t scopeId, uint16_t varId, VarType varType);
     void loadValueFromVar(uint16_t scopeId, uint16_t varId, VarType varType);
 
-    Bytecode* bytecode();
-    inline Scope* currentScope();
-    inline uint16_t currentScopeId();
-    inline void setCurrentScope(Scope* scope);
-    inline void setCurrentScopeId(uint16_t scopeId);
-
     void checkNumber(VarType type);
 
 
-    typedef std::map<uint16_t, TranslatedFunction*> FunctionIdMap;
+//    typedef std::map<uint16_t, TranslatedFunction*> FunctionIdMap;
 
-    typedef std::vector<string> vstr;
-    typedef std::vector<BytecodeFunction*> BytecodeFunctionVec;
-    typedef std::map<Scope*, uint16_t> ScopeMap;
-    typedef std::map<AstVar*, uint16_t> VarMap;
-    typedef std::map<uint16_t, VarMap> ScopeVarMap;
+//    typedef std::vector<string> vstr;
+//    typedef std::vector<BytecodeFunction*> BytecodeFunctionVec;
+//    typedef std::map<Scope*, uint16_t> ScopeMap;
+//    typedef std::map<AstVar*, uint16_t> VarMap;
+//    typedef std::map<uint16_t, VarMap> ScopeVarMap;
 
-    typedef std::map<AstFunction*, uint16_t> AstFunctionMap;
+//    typedef std::map<AstFunction*, uint16_t> AstFunctionMap;
 
 
-    typedef std::vector<NativeFunctionDescriptor> NativeVec;
-    typedef std::map<std::string, uint16_t> NativeMap;
-    typedef std::map<std::string, uint16_t> ConstantMap;
+//    typedef std::vector<NativeFunctionDescriptor> NativeVec;
+//    typedef std::map<std::string, uint16_t> NativeMap;
 
-    uint16_t _currentScopeId;
-    Scope* _currentScope;
-    ScopeMap _scopes;
-    ScopeVarMap _vars;
 
-    AstFunctionMap _astFunctions;
-    BytecodeFunctionVec _bcFunctions;
-    std::vector<uint16_t> _bcFunctionStack;
-    std::vector<Bytecode*> _bytecodeStack;
+//    uint16_t _currentScopeId;
+//    Scope* _currentScope;
+//    ScopeMap _scopes;
+//    ScopeVarMap _vars;
 
-    NativeMap _nativeById;
-    NativeVec _natives;
+//    AstFunctionMap _astFunctions;
+//    BytecodeFunctionVec _bcFunctions;
+//    std::vector<uint16_t> _bcFunctionStack;
 
-    ConstantMap _constantById;
-    std::vector<string> _constants;
+
+//    NativeMap _nativeById;
+//    NativeVec _natives;
 
     TypeInferencer _typeInferencer;
 
@@ -154,26 +181,59 @@ class BytecodeGenerator : public AstVisitor
     void addPrint(VarType type);
     void addReturn();
 
-    uint16_t translatedFunctionId();
-    AstFunction* getFunction(Scope* scope, const string& name);
-    uint16_t getFunctionId(Scope* scope, const string& name);
-    uint16_t registerScope(Scope * scope);
-    uint16_t registerFunction(AstFunction* astFunction);
-    uint16_t registerVar(uint16_t scopeId, AstVar* var);
-    uint16_t registerConstant(string const& constant);
+//    uint16_t translatedFunctionId();
+//    AstFunction* getFunction(Scope* scope, const string& name);
+//    uint16_t getFunctionId(Scope* scope, const string& name);
+//    uint16_t registerScope(Scope * scope);
+//    uint16_t registerFunction(AstFunction* astFunction);
+//    uint16_t registerVar(uint16_t scopeId, AstVar* var);
 
-    uint16_t getVarId(uint16_t scopeId, string const& name);
-    std::pair<uint16_t, uint16_t> findScopeVarId(Scope* scope, string const& varName);
-    std::pair<uint16_t, uint16_t> findScopeVarId(string const& varName);
+
+//    uint16_t getVarId(uint16_t scopeId, string const& name);
+//    std::pair<uint16_t, uint16_t> findScopeVarId(Scope* scope, string const& varName);
+//    std::pair<uint16_t, uint16_t> findScopeVarId(string const& varName);
 
     InterpreterCodeImpl* _code;
+
+    ///////////////////=========
+
+    typedef std::map<std::string, uint16_t> ConstantMap;
+    ConstantMap _constantById;
+    std::vector<string> _constants;
+    uint16_t registerConstant(string const& constant);
+
+    typedef std::map<string, uint16_t> FunctionNameToIdMap;
+    FunctionNameToIdMap _functionIdByName;
+    FunctionNameToIdMap _nativeIdByName;
+    std::vector<BytecodeFunction*> _bcFunctions;
+    std::vector<NativeFunctionDescriptor> _natives;
+
+    std::vector<Bytecode*> _bytecodeStack;
+    Bytecode* bytecode();
+
+    bool isNative(const string& name);
+    uint16_t getNativeIdByName(const string& name);
+    uint16_t getFunctionIdByName(const string& name);
+    void registerScopeFunctions(Scope* scope);
+    void registerNativeFunction(NativeCallNode* native);
+    void registerFunction(AstFunction *astFunction);
+
+    void collectArgs(FunctionNode* node);
+    void translateScopeFunctions(Scope* scope);
+
+    std::vector<FunctionTranslationContext*> _contexts;
+    FunctionTranslationContext* addNewFunctionTranslationContext(uint16_t functionScopeId);
+    void removeLastFunctionTranslationContext();
+    FunctionTranslationContext* currentFunctionTranslationContext();
+
+    ScopeVarId findScopeVarIdByName(const string& name);
 
 public:
     BytecodeGenerator();
     virtual ~BytecodeGenerator();
 
     InterpreterCodeImpl* makeBytecode(AstFunction* top);
-    void visitAstFunction(AstFunction* astFunction);
+//    void visitAstFunction(AstFunction* astFunction);
 
 #define VISITOR_FUNCTION(type, name) \
     virtual void visit##type(type* node);
