@@ -45,7 +45,7 @@ int main(int argc, char** argv) {
     Code* code = 0;
 
     Status* translateStatus = translator->translate(expr, &code);
-    code->disassemble();
+//    code->disassemble();
     if (translateStatus->isError()) {
         uint32_t position = translateStatus->getPosition();
         uint32_t line = 0, offset = 0;

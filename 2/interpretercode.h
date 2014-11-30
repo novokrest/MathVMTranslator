@@ -37,7 +37,7 @@ class InterpreterCodeImpl : public Code
 #undef EXECUTE_INSN
 
     void executeBytecodeFunction(BytecodeFunction* bcFunction);
-    void executeNativeFunction(NativeFunctionDescriptor& native);
+    void executeNativeFunction(const string* name, const Signature* signature, const void* code);
 
 public:
     virtual ~InterpreterCodeImpl();

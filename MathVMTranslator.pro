@@ -31,7 +31,7 @@ SOURCES += main.cpp \
     2/interpretercode.cpp \
     2/contextmanager.cpp \
     2/functioncontext.cpp \
-    2/translator.cpp
+    2/bytecodetranslator.cpp
 
 HEADERS += \
     vm/parser.h \
@@ -63,7 +63,8 @@ HEADERS += \
     2/bytecodegenerator.h \
     2/interpretercode.h \
     2/contextmanager.h \
-    2/exceptions.h
+    2/exceptions.h \
+    2/typeinferencer.h
 
 INCLUDEPATH += vm \
                include \

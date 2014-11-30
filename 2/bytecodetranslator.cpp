@@ -6,7 +6,6 @@
 
 namespace mathvm {
 
-// Implement me!
 Translator* Translator::create(const string& impl) {
     if (impl == "" || impl == "intepreter") {
         return new BytecodeTranslatorImpl();
@@ -29,20 +28,17 @@ Status* BytecodeTranslatorImpl::translate(const string& program, Code* *code) {
 Status* BytecodeTranslatorImpl::translateBytecode(const string &program, InterpreterCodeImpl **code)
 {
     Parser parser;
-    Status* status = parser.parseProgram(program);
-    if (status != NULL && status->isError()) {
-        return status;
+    Status* parserStatus = parser.parseProgram(program);
+    if (parserStatus != NULL && parserStatus->isError()) {
+        return parserStatus;
     }
+    delete parserStatus;
 
     AstFunction* top = parser.top();
     BytecodeGenerator bytecodeGenerator;
-    InterpreterCodeImpl* bytecode = bytecodeGenerator.makeBytecode(top);
-    if (bytecode == NULL) {
-        return Status::Error("");
-    }
-    *code = bytecode;
+    Status* translatorStatus = bytecodeGenerator.makeBytecode(top, code);
 
-    return status;
+    return translatorStatus;
 }
 
 }

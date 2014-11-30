@@ -3,60 +3,21 @@
 
 #include "mathvm.h"
 #include "visitors.h"
+#include "typeinferencer.h"
 #include "interpretercode.h"
 #include "exceptions.h"
 
 
 namespace mathvm {
 
-class TypeInferencer : public AstVisitor
-{
-    static const int ASSIGN_COUNT = 3;
-    static const int COMPARE_COUNT = 9;
-    static const int BIT_COUNT = 3;
-    static const int ARIPHM_COUNT = 4;
-
-    static const TokenKind assignOps[];//   = {tASSIGN, tINCRSET, tDECRSET};
-    static const TokenKind compareOps[];// = {tEQ, tNEQ, tNOT, tLT, tLE, tGT, tGE, tOR, tAND};
-    static const TokenKind bitOps[];//         = {tAOR, tAAND, tAXOR};
-    static const TokenKind ariphmOps[];//   = {tADD, tSUB, tMUL, tDIV};
-
-    VarType _type;
-    Scope* _scope;
-
-    VarType commonTypeForBinOp(TokenKind binOp, VarType left, VarType right) const;
-
-    static bool find(TokenKind op, const TokenKind ops[], int count);
-    bool isAssignmentOp(TokenKind binOp);
-    bool isCompareOp(TokenKind binOp);
-    bool isBitOp(TokenKind binOp);
-    bool isAriphmOp(TokenKind binOp);
-
-public:
-    TypeInferencer();
-    virtual ~TypeInferencer();
-
-    void setScope(Scope* scope);
-    VarType inferredType() const;
-//    VarType resolveType(AstNode* node);
-    VarType commonType(VarType v1, VarType v2) const;
-
-#define VISITOR_FUNCTION(type, name) \
-    virtual void visit##type(type* node);
-
-    FOR_NODES(VISITOR_FUNCTION)
-#undef VISITOR_FUNCTION
-};
-
 typedef std::pair<uint16_t, uint16_t> ScopeVarId;
 
 class FunctionTranslationContext
 {
-//    typedef std::pair<uint16_t, uint16_t> ScopeVarId;
     typedef std::vector<uint16_t> VarIds;
     typedef std::map<string, VarIds> VarNameToIdsMap;
 
-    uint16_t _scopeId; // function scopeId
+    uint16_t _scopeId;
 
     VarNameToIdsMap _varNameToIds;
     uint16_t _freeVarId;
@@ -86,67 +47,17 @@ class FunctionTranslationContext
 
 class BytecodeGenerator : public AstVisitor
 {
-//    class BytecodeVar
-//    {
-//        uint16_t _scopeId;
-//        uint16_t _id;
-//        VarType _type;
-
-//    public:
-//        BytecodeVar(uint16_t scopeId, uint16_t id, VarType type)
-//            : _scopeId(scopeId), _id(id), _type(type) {
-//        }
-
-//        uint16_t scopeId() {
-//            return _scopeId;
-//        }
-
-//        uint16_t id() {
-//            return _id;
-//        }
-
-//        VarType type() {
-//            return _type;
-//        }
-//    };
-
     void storeValueToVar(uint16_t scopeId, uint16_t varId, VarType varType);
     void loadValueFromVar(uint16_t scopeId, uint16_t varId, VarType varType);
 
-//    typedef std::map<uint16_t, TranslatedFunction*> FunctionIdMap;
-
-//    typedef std::vector<string> vstr;
-//    typedef std::vector<BytecodeFunction*> BytecodeFunctionVec;
-//    typedef std::map<Scope*, uint16_t> ScopeMap;
-//    typedef std::map<AstVar*, uint16_t> VarMap;
-//    typedef std::map<uint16_t, VarMap> ScopeVarMap;
-
-//    typedef std::map<AstFunction*, uint16_t> AstFunctionMap;
-
-
-//    typedef std::vector<NativeFunctionDescriptor> NativeVec;
-//    typedef std::map<std::string, uint16_t> NativeMap;
-
-
-//    uint16_t _currentScopeId;
-//    Scope* _currentScope;
-//    ScopeMap _scopes;
-//    ScopeVarMap _vars;
-
-//    AstFunctionMap _astFunctions;
-//    BytecodeFunctionVec _bcFunctions;
-//    std::vector<uint16_t> _bcFunctionStack;
-
-
-//    NativeMap _nativeById;
-//    NativeVec _natives;
-
     VarType _lastType;
-    TypeInferencer _typeInferencer;
+    uint32_t _currentPosition;
+
+    void refreshCurrentPosition(AstNode* node);
+    uint32_t currentPosition();
 
     void checkNumber(VarType type);
     VarType lastInferredType();
-//    VarType resolveType(AstNode* node);
     VarType getCommonType(VarType type1, VarType type2);
 
     void addCast(VarType type, VarType targetType);
@@ -180,21 +91,7 @@ class BytecodeGenerator : public AstVisitor
     void addReturn();
     void addSwap();
 
-//    uint16_t translatedFunctionId();
-//    AstFunction* getFunction(Scope* scope, const string& name);
-//    uint16_t getFunctionId(Scope* scope, const string& name);
-//    uint16_t registerScope(Scope * scope);
-//    uint16_t registerFunction(AstFunction* astFunction);
-//    uint16_t registerVar(uint16_t scopeId, AstVar* var);
-
-
-//    uint16_t getVarId(uint16_t scopeId, string const& name);
-//    std::pair<uint16_t, uint16_t> findScopeVarId(Scope* scope, string const& varName);
-//    std::pair<uint16_t, uint16_t> findScopeVarId(string const& varName);
-
     InterpreterCodeImpl* _code;
-
-    ///////////////////=========
 
     typedef std::map<std::string, uint16_t> ConstantMap;
     ConstantMap _constantById;
@@ -204,7 +101,6 @@ class BytecodeGenerator : public AstVisitor
     typedef std::map<string, uint16_t> FunctionNameToIdMap;
     FunctionNameToIdMap _functionIdByName;
     FunctionNameToIdMap _nativeIdByName;
-//    std::vector<BytecodeFunction*> _bcFunctions;
     std::vector<NativeFunctionDescriptor> _natives;
 
     std::vector<Bytecode*> _bytecodeStack;
@@ -229,18 +125,17 @@ class BytecodeGenerator : public AstVisitor
 
     void addCallTopFunction();
 
-public:
-    BytecodeGenerator();
-    virtual ~BytecodeGenerator();
-
-    InterpreterCodeImpl* makeBytecode(AstFunction* top);
-//    void visitAstFunction(AstFunction* astFunction);
-
 #define VISITOR_FUNCTION(type, name) \
     virtual void visit##type(type* node);
 
     FOR_NODES(VISITOR_FUNCTION)
 #undef VISITOR_FUNCTION
+
+public:
+    BytecodeGenerator();
+    virtual ~BytecodeGenerator();
+
+    Status* makeBytecode(AstFunction* top, InterpreterCodeImpl* *code);
 };
 
 }

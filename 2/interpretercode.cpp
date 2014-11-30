@@ -31,7 +31,7 @@ Status* InterpreterCodeImpl::execute(vector<Var*> &vars)
         executeBytecodeFunction(bcFunction);
     }
     catch (InterpretationException& exception) {
-        return Status::Error(exception.what(), exception.position());
+        return Status::Error(exception.what(), exception.bytecodePosition());
     }
 
     return Status::Ok();
@@ -40,12 +40,6 @@ Status* InterpreterCodeImpl::execute(vector<Var*> &vars)
 void InterpreterCodeImpl::disassemble(ostream &out, FunctionFilter *filter)
 {
     Code::disassemble(out, filter);
-    //    Code::FunctionIterator functIt(this);
-    //    while(functIt.hasNext()) {
-    //        BytecodeFunction* bcFunction = dynamic_cast<BytecodeFunction*>(functIt.next());
-    //        Bytecode* bytecode = bcFunction->bytecode();
-    //        out << bcFunction->name() << ":" << std::endl;
-    //    }
 }
 
 void InterpreterCodeImpl::executeBytecode() {
@@ -63,10 +57,10 @@ void InterpreterCodeImpl::executeBytecodeInsn(Instruction insn) {
     break;
 
     FOR_BYTECODES(CASE_INSN)
-        #undef CASE_INSN
+#undef CASE_INSN
 
-            default:
-        throw InterpretationException("from executeBytecodeInsn", bytecodeIndex());
+    default:
+        throw InterpretationException("Incorrect instruction");
     break;
     }
 }
@@ -78,7 +72,6 @@ Bytecode* InterpreterCodeImpl::bytecode() {
 void InterpreterCodeImpl::addNewBytecode(Bytecode *bytecode) {
     _bytecodes.push_back(bytecode);
 
-    std::cout << bytecode << std::endl;
     if (_bytecodes.size() > 10) {
         assert(_bytecodes.back() == _bytecodes[_bytecodes.size() - 1]);
     }
@@ -104,7 +97,7 @@ void InterpreterCodeImpl::setBytecodeIndex(uint32_t index) {
 }
 
 void InterpreterCodeImpl::executeINVALID() {
-    throw InterpretationException("Invalid instruction", bytecodeIndex());
+    throw InterpretationException("INVALID instruction");
 }
 
 void InterpreterCodeImpl::executeDLOAD()
@@ -232,6 +225,9 @@ void InterpreterCodeImpl::executeDDIV()
     shiftBytecodeIndex(1);
     double d1 = _stack.popDouble();
     double d2 = _stack.popDouble();
+    if (!d2) {
+        throw InterpretationException("Division by zero");
+    }
     double dres = d1 / d2;
     _stack.pushDouble(dres);
 }
@@ -241,6 +237,9 @@ void InterpreterCodeImpl::executeIDIV()
     shiftBytecodeIndex(1);
     int64_t i1 = _stack.popInt();
     int64_t i2 = _stack.popInt();
+    if (!i2) {
+        throw InterpretationException("Division by zero");
+    }
     int64_t ires = i1 / i2;
     _stack.pushInt(ires);
 }
@@ -302,7 +301,6 @@ void InterpreterCodeImpl::executeIPRINT()
     shiftBytecodeIndex(1);
     int64_t i = _stack.popInt();
     std::cout << i;
-//    printf("%d", i);
 }
 
 void InterpreterCodeImpl::executeDPRINT()
@@ -310,7 +308,6 @@ void InterpreterCodeImpl::executeDPRINT()
     shiftBytecodeIndex(1);
     double d = _stack.popDouble();
     std::cout << d;
-//    printf("%f", d);
 }
 
 void InterpreterCodeImpl::executeSPRINT()
@@ -318,7 +315,6 @@ void InterpreterCodeImpl::executeSPRINT()
     shiftBytecodeIndex(1);
     uint16_t id = _stack.popStringId();
     std::cout << constantById(id);
-//    printf("%s", constantById(id).c_str());
 }
 
 void InterpreterCodeImpl::executeI2D()
@@ -340,7 +336,7 @@ void InterpreterCodeImpl::executeD2I()
 void InterpreterCodeImpl::executeS2I()
 {
     shiftBytecodeIndex(1);
-    //    throw InterpretationException("Couldn't cast string to int");
+    throw InterpretationException("Couldn't cast \"string\" to \"int\"");
 }
 
 void InterpreterCodeImpl::executeSWAP()
@@ -758,19 +754,19 @@ void InterpreterCodeImpl::executeIFICMPLE() {
 void InterpreterCodeImpl::executeDUMP()
 {
     shiftBytecodeIndex(1);
-    VarValue topElement = _stack.getElement();
+    ContextVar topElement = _stack.getElement();
     switch(topElement.type()) {
     case VT_DOUBLE:
-        printf("%.3f", topElement.doubleValue());
+        std::cout << topElement.doubleValue();
         break;
     case VT_INT:
-        printf("%d", topElement.intValue());
+        std::cout << topElement.intValue();
         break;
     case VT_STRING:
-        printf("%s", constantById(topElement.stringIdValue()).c_str());
+        std::cout << constantById(topElement.stringIdValue()).c_str();
         break;
     default:
-        throw InterpretationException("from DUMP", bytecodeIndex());
+        throw InterpretationException("Incorrect type for DUMP");
         break;
     }
 }
@@ -778,7 +774,7 @@ void InterpreterCodeImpl::executeDUMP()
 void InterpreterCodeImpl::executeSTOP()
 {
     shiftBytecodeIndex(1);
-    throw InterpretationException("Stopped", bytecodeIndex());
+    throw InterpretationException("Stopped");
 }
 
 void InterpreterCodeImpl::executeCALL()
@@ -807,11 +803,15 @@ void InterpreterCodeImpl::executeCALLNATIVE()
 {
     shiftBytecodeIndex(1);
     uint16_t nativeId = bytecode()->getUInt16(bytecodeIndex());
-    //    executeNativeFunction(_natives[nativeId]);
     shiftBytecodeIndex(2);
+
+    const Signature* signature;
+    const string* name;
+    const void* code = nativeById(nativeId, &signature, &name);
+    executeNativeFunction(name, signature, code);
 }
 
-void InterpreterCodeImpl::executeNativeFunction(NativeFunctionDescriptor& ) {
+void InterpreterCodeImpl::executeNativeFunction(const string* name, const Signature* signature, const void* code) {
 
 }
 
@@ -824,9 +824,6 @@ void InterpreterCodeImpl::executeRETURN()
 void InterpreterCodeImpl::executeBREAK()
 {
     shiftBytecodeIndex(1);
-    //make breakpoint for debugger, may be wait for user's input
-    getchar();
-    std::cout << "After break" << std::endl;
 }
 
 

@@ -7,6 +7,7 @@
 
 using std::string;
 
+namespace mathvm {
 
 class MessageException : public std::exception
 {
@@ -23,7 +24,6 @@ public:
     virtual ~MessageException() throw() {
     }
 
-
     virtual const char* what() const throw() {
         return _message.c_str();
     }
@@ -31,37 +31,48 @@ public:
 
 class TranslationException: public MessageException
 {
+    uint32_t _position;
+
 public:
     TranslationException() {
     }
 
-    TranslationException(string const& message)
-        : MessageException(message) {
+    TranslationException(string const& message, uint32_t position = 0)
+        : MessageException(message), _position(position) {
     }
 
     virtual ~TranslationException() throw() {
     }
+
+    uint32_t position() const {
+        return _position;
+    }
 };
 
-class InterpretationException: public MessageException
+class InterpretationException : public MessageException
 {
-    uint32_t _position;
+    string _functionName;
+    uint32_t _bytecodePosition;
 
 public:
-    InterpretationException(uint32_t position = mathvm::VT_INVALID)
-        : _position(position) {
-    }
-
-    InterpretationException(string const& message, uint32_t position = mathvm::VT_INVALID)
-        : MessageException(message), _position(position) {
+    InterpretationException(string const& message, string const& functionName = "", uint32_t bytecodePosition = 0)
+        : MessageException(message), _functionName(functionName), _bytecodePosition(bytecodePosition) {
     }
 
     virtual ~InterpretationException() throw() {
     }
 
-    uint32_t position() {
-        return _position;
+    const string& functionName() const {
+        return _functionName;
+    }
+
+    uint32_t bytecodePosition() const {
+        return _bytecodePosition;
     }
 };
+
+
+}
+
 
 #endif // EXCEPTIONS_H

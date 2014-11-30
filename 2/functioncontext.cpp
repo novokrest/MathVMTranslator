@@ -1,4 +1,5 @@
 #include "bytecodegenerator.h"
+#include <stdint.h>
 
 namespace mathvm {
 
@@ -8,13 +9,15 @@ FunctionTranslationContext::FunctionTranslationContext(uint16_t scopeId)
 
 uint16_t FunctionTranslationContext::getFreeVarId()
 {
+    if (_freeVarId == UINT16_MAX) {
+        throw TranslationException("too much variables");
+    }
     return _freeVarId++;
 }
 
 void FunctionTranslationContext::registerScope(Scope* scope)
 {
     registerScopeVars(scope);
-//    registerScopeAstFunctions(scope);
 }
 
 void FunctionTranslationContext::registerScopeVars(Scope* scope) {

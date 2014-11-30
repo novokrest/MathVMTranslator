@@ -35,7 +35,7 @@ int main()
 
     fib(100000);
 
-    int j = 0;
+    int j = 5 % 0;
 
     return 0;
 }

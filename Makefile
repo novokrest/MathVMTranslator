@@ -74,7 +74,7 @@ SOURCES       = main.cpp \
 		2/interpretercode.cpp \
 		2/contextmanager.cpp \
 		2/functioncontext.cpp \
-		2/translator.cpp 
+		2/bytecodetranslator.cpp 
 OBJECTS       = main.o \
 		ast.o \
 		interpreter.o \
@@ -101,7 +101,7 @@ OBJECTS       = main.o \
 		interpretercode.o \
 		contextmanager.o \
 		functioncontext.o \
-		translator.o
+		bytecodetranslator.o
 DIST          = ../../Qt/5.4/clang_64/mkspecs/features/spec_pre.prf \
 		../../Qt/5.4/clang_64/mkspecs/qdevice.pri \
 		../../Qt/5.4/clang_64/mkspecs/features/device_config.prf \
@@ -252,7 +252,8 @@ DIST          = ../../Qt/5.4/clang_64/mkspecs/features/spec_pre.prf \
 		2/bytecodegenerator.h \
 		2/interpretercode.h \
 		2/contextmanager.h \
-		2/exceptions.h main.cpp \
+		2/exceptions.h \
+		2/typeinferencer.h main.cpp \
 		vm/ast.cpp \
 		vm/interpreter.cpp \
 		vm/mathvm.cpp \
@@ -278,7 +279,7 @@ DIST          = ../../Qt/5.4/clang_64/mkspecs/features/spec_pre.prf \
 		2/interpretercode.cpp \
 		2/contextmanager.cpp \
 		2/functioncontext.cpp \
-		2/translator.cpp
+		2/bytecodetranslator.cpp
 QMAKE_TARGET  = MathVMTranslator
 DESTDIR       = #avoid trailing-slash linebreak
 TARGET        = MathVMTranslator
@@ -791,18 +792,15 @@ bytecodegenerator.o: 2/bytecodegenerator.cpp 2/bytecodegenerator.h \
 		include/mathvm.h \
 		include/visitors.h \
 		include/ast.h \
+		2/typeinferencer.h \
 		2/interpretercode.h \
 		2/contextmanager.h \
 		2/exceptions.h
 	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o bytecodegenerator.o 2/bytecodegenerator.cpp
 
-typeinferencer.o: 2/typeinferencer.cpp 2/bytecodegenerator.h \
-		include/mathvm.h \
-		include/visitors.h \
+typeinferencer.o: 2/typeinferencer.cpp 2/typeinferencer.h \
 		include/ast.h \
-		2/interpretercode.h \
-		2/contextmanager.h \
-		2/exceptions.h
+		include/mathvm.h
 	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o typeinferencer.o 2/typeinferencer.cpp
 
 interpretercode.o: 2/interpretercode.cpp 2/interpretercode.h \
@@ -820,21 +818,23 @@ functioncontext.o: 2/functioncontext.cpp 2/bytecodegenerator.h \
 		include/mathvm.h \
 		include/visitors.h \
 		include/ast.h \
+		2/typeinferencer.h \
 		2/interpretercode.h \
 		2/contextmanager.h \
 		2/exceptions.h
 	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o functioncontext.o 2/functioncontext.cpp
 
-translator.o: 2/translator.cpp include/mathvm.h \
+bytecodetranslator.o: 2/bytecodetranslator.cpp include/mathvm.h \
 		vm/parser.h \
 		include/ast.h \
 		vm/scanner.h \
 		include/visitors.h \
 		2/bytecodegenerator.h \
+		2/typeinferencer.h \
 		2/interpretercode.h \
 		2/contextmanager.h \
 		2/exceptions.h
-	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o translator.o 2/translator.cpp
+	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o bytecodetranslator.o 2/bytecodetranslator.cpp
 
 ####### Install
 

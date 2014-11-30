@@ -3,76 +3,76 @@
 
 namespace mathvm {
 
-VarValue::VarValue()
+ContextVar::ContextVar()
     :_type(VT_INVALID) {
 }
 
-VarValue::VarValue(double d)
+ContextVar::ContextVar(double d)
     : _type(VT_DOUBLE) {
     _value.d = d;
 }
 
-VarValue::VarValue(int64_t i)
+ContextVar::ContextVar(int64_t i)
     : _type(VT_INT) {
     _value.i = i;
 }
 
-VarValue::VarValue(uint16_t id)
+ContextVar::ContextVar(uint16_t id)
     : _type(VT_STRING) {
     _value.id = id;
 }
 
-VarType VarValue::type() {
+VarType ContextVar::type() {
     return _type;
 }
 
-double VarValue::doubleValue() {
+double ContextVar::doubleValue() {
     assert(_type == VT_DOUBLE);
     return _value.d;
 }
 
-int64_t VarValue::intValue() {
+int64_t ContextVar::intValue() {
     assert(_type == VT_INT);
     return _value.i;
 }
 
-uint16_t VarValue::stringIdValue() {
+uint16_t ContextVar::stringIdValue() {
     assert(_type == VT_STRING);
     return _value.id;
 }
 
-void VarValue::setDouble(double d) {
+void ContextVar::setDouble(double d) {
     _type = VT_DOUBLE;
     _value.d = d;
 }
 
-void VarValue::setInt(int64_t i) {
+void ContextVar::setInt(int64_t i) {
     _type = VT_INT;
     _value.i = i;
 }
 
-void VarValue::setStringId(uint16_t id) {
+void ContextVar::setStringId(uint16_t id) {
     _type = VT_STRING;
     _value.id = id;
 }
 
-void InterpreterStack::pushElement(VarValue element) {
+void InterpreterStack::pushElement(ContextVar element) {
     _elements.push_back(element);
 }
 
 void InterpreterStack::pushDouble(double d) {
-    _elements.push_back(VarValue(d));
+    _elements.push_back(ContextVar(d));
 }
 
 void InterpreterStack::pushInt(int64_t i) {
-    _elements.push_back(VarValue(i));
+    _elements.push_back(ContextVar(i));
 }
 
 void InterpreterStack::pushStringId(uint16_t id) {
-    _elements.push_back(VarValue(id));
+    _elements.push_back(ContextVar(id));
 }
 
-VarValue InterpreterStack::getElement() {
+ContextVar InterpreterStack::getElement() {
     assert(_elements.size() > 0);
     return _elements.back();
 }
@@ -92,9 +92,9 @@ uint16_t InterpreterStack::getStringId() {
     return _elements.back().stringIdValue();
 }
 
-VarValue InterpreterStack::popElement() {
+ContextVar InterpreterStack::popElement() {
     assert(_elements.size() > 0);
-    VarValue element = _elements.back();
+    ContextVar element = _elements.back();
     _elements.pop_back();
 
     return element;
@@ -123,16 +123,17 @@ uint16_t InterpreterStack::popStringId() {
 }
 
 void InterpreterStack::swapTwoUpperElements() {
-    VarValue upper = popElement();
-    VarValue lower = popElement();
+    ContextVar upper = popElement();
+    ContextVar lower = popElement();
     pushElement(upper);
     pushElement(lower);
 }
 
+#include <cstring>
 void ContextManager::checkContext(uint16_t contextId) {
     ContextMap::iterator contextIt = _contextById.find(contextId);
     if (contextIt == _contextById.end()) {
-        throw InterpretationException("from ContextManager::checkContext()");
+        throw InterpretationException("Context doesn't exist");
     }
 }
 
@@ -140,8 +141,7 @@ void ContextManager::checkCtxVar(uint16_t contextId, uint16_t varId) {
     Context& context = getContext(contextId);
     Context::iterator varIt = context.find(varId);
     if (varIt == context.end()) {
-        //change in loadCtxVar [] to at() back
-        throw InterpretationException("from ContextManager::checkCtxVar");
+        throw InterpretationException("Var is not initialized");
     }
 }
 
@@ -177,7 +177,7 @@ double ContextManager::loadDoubleFromCtxVar(uint16_t contextId, uint16_t varId) 
     }
     catch(InterpretationException& exception) {
         double defaultValue = 0.0;
-        getContext(contextId)[varId] = VarValue(defaultValue);
+        getContext(contextId)[varId] = ContextVar(defaultValue);
     }
     return getContext(contextId).at(varId).doubleValue();
 }
@@ -192,7 +192,7 @@ int64_t ContextManager::loadIntFromCtxVar(uint16_t contextId, uint16_t varId) {
     }
     catch(InterpretationException& exception) {
         int64_t defaultValue = 0;
-        getContext(contextId)[varId] = VarValue(defaultValue);
+        getContext(contextId)[varId] = ContextVar(defaultValue);
     }
     return getContext(contextId).at(varId).intValue();
 }
@@ -207,7 +207,7 @@ uint16_t ContextManager::loadStringIdFromCtxVar(uint16_t contextId, uint16_t var
     }
     catch(InterpretationException& exception) {
         uint16_t defaultValue = 0;
-        getContext(contextId)[varId] = VarValue(defaultValue);
+        getContext(contextId)[varId] = ContextVar(defaultValue);
     }
     return getContext(contextId).at(varId).stringIdValue();
 }
@@ -227,11 +227,7 @@ void ContextManager::storeDoubleToVar(uint16_t varId, double dvalue) {
 
 void ContextManager::storeIntToCtxVar(uint16_t contextId, uint16_t varId, int64_t ivalue) {
     Context& context = getContext(contextId);
-
-    std::pair<uint16_t, VarValue> elem(varId, VarValue(ivalue));
-    context.insert(elem);
-
-//    context[varId]; // = VarValue(ivalue); //setInt(ivalue);
+    context[varId].setInt(ivalue);
 }
 
 void ContextManager::storeIntToVar(uint16_t varId, int64_t ivalue) {

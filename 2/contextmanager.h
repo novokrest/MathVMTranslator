@@ -6,7 +6,7 @@
 
 namespace mathvm {
 
-class VarValue
+class ContextVar
 {
     union {
         double d;
@@ -17,10 +17,10 @@ class VarValue
     VarType _type;
 
 public:
-    VarValue();
-    VarValue(double d);
-    VarValue(int64_t i);
-    VarValue(uint16_t id);
+    ContextVar();
+    ContextVar(double d);
+    ContextVar(int64_t i);
+    ContextVar(uint16_t id);
 
     VarType type();
 
@@ -35,21 +35,20 @@ public:
 
 class InterpreterStack
 {
-    vector<VarValue> _elements;
-    uint64_t _current;
+    vector<ContextVar> _elements;
 
 public:
-    void pushElement(VarValue element);
+    void pushElement(ContextVar element);
     void pushDouble(double d);
     void pushInt(int64_t i);
     void pushStringId(uint16_t id);
 
-    VarValue getElement();
+    ContextVar getElement();
     double getDouble();
     int64_t getInt();
     uint16_t getStringId();
 
-    VarValue popElement();
+    ContextVar popElement();
     double popDouble();
     int64_t popInt();
     uint16_t popStringId();
@@ -59,9 +58,9 @@ public:
 
 class ContextManager
 {
-    typedef std::map<uint16_t, VarValue> Context;
+    typedef std::map<uint16_t, ContextVar> Context;
     typedef std::vector<Context> RecursiveContextVec;
-    typedef std::map<uint16_t, RecursiveContextVec> ContextMap;// -> ContextVec
+    typedef std::map<uint16_t, RecursiveContextVec> ContextMap;
 
     ContextMap _contextById;
     uint16_t _currentContextId;
@@ -91,7 +90,6 @@ public:
     void storeStringIdToCtxVar(uint16_t contextId, uint16_t varId, uint16_t svalue);
     void storeStringIdToVar(uint16_t varId, uint16_t svalue);
 };
-
 
 }
 

@@ -3,12 +3,6 @@
 
 namespace mathvm {
 
-void BytecodeGenerator::checkNumber(VarType type) {
-    if (type != VT_DOUBLE && type != VT_INT) {
-        throw TranslationException();
-    }
-}
-
 BytecodeGenerator::BytecodeGenerator()
     : _lastType(VT_INVALID) {
 }
@@ -20,32 +14,27 @@ Bytecode* BytecodeGenerator::bytecode() {
     return _bytecodeStack.back();
 }
 
-//inline Scope* BytecodeGenerator::currentScope() {
-//    return _currentScope;
-//}
-
-//uint16_t BytecodeGenerator::currentScopeId() {
-//    return _currentScopeId;
-//}
-
-//void BytecodeGenerator::setCurrentScope(Scope *scope) {
-//    _currentScope = scope;
-//}
-
-//void BytecodeGenerator::setCurrentScopeId(uint16_t scopeId) {
-//    _currentScopeId = scopeId;
-//}
-
-//VarType BytecodeGenerator::resolveType(AstNode *node) {
-//    return _typeInferencer.resolveType(node);
-//}
-
 VarType BytecodeGenerator::lastInferredType() {
     return _lastType;
 }
 
+void BytecodeGenerator::refreshCurrentPosition(AstNode *node) {
+    _currentPosition = node->position();
+}
+
+uint32_t BytecodeGenerator::currentPosition() {
+    return _currentPosition;
+}
+
+void BytecodeGenerator::checkNumber(VarType type) {
+    if (type != VT_DOUBLE && type != VT_INT) {
+        throw TranslationException("Incorrect type: expected = \"int\" | \"double\", actual = \"" + string(typeToName(type)) + "\"",
+                                   currentPosition());
+    }
+}
+
 VarType BytecodeGenerator::getCommonType(VarType type1, VarType type2) {
-    return _typeInferencer.commonType(type1, type2);
+    return TypeInferencer::commonType(type1, type2);
 }
 
 void BytecodeGenerator::addCast(VarType type, VarType targetType) {
@@ -55,28 +44,30 @@ void BytecodeGenerator::addCast(VarType type, VarType targetType) {
 
     switch(targetType) {
     case VT_INT:
-        if (type == VT_STRING) {
-            bytecode()->add(BC_S2I);
-            return;
-        }
-        else if (type == VT_DOUBLE) {
+        if (type == VT_DOUBLE) {
             bytecode()->add(BC_D2I);
             return;
         }
+        throw TranslationException("Bad cast from " + string(typeToName(type)) + " to " + string(typeToName(targetType)),
+                                   currentPosition());
         break;
     case VT_DOUBLE:
         if (type == VT_INT) {
             bytecode()->add(BC_I2D);
             return;
         }
+        throw TranslationException("Bad cast from " + string(typeToName(type)) + " to " + string(typeToName(targetType)),
+                                   currentPosition());
         break;
     default:
-        throw TranslationException("from BytecodeGenerator::addCast()");
+        throw TranslationException("Bad cast from " + string(typeToName(type)) + " to " + string(typeToName(targetType)),
+                                   currentPosition());
         break;
     }
 }
 
 void BytecodeGenerator::addIntDoubleInsn(VarType type, Instruction intInsn, Instruction doubleInsn) {
+    checkNumber(type);
     switch(type) {
     case VT_INT:
         bytecode()->add(intInsn);
@@ -85,7 +76,6 @@ void BytecodeGenerator::addIntDoubleInsn(VarType type, Instruction intInsn, Inst
         bytecode()->add(doubleInsn);
         break;
     default:
-        throw TranslationException("from BytecodeGenerator::addIntDoubleInsn");
         break;
     }
 }
@@ -102,7 +92,8 @@ void BytecodeGenerator::addStringIntDoubleInsn(VarType type, Instruction stringI
         bytecode()->add(doubleInsn);
         break;
     default:
-        throw TranslationException("from BytecodeGenerator::addStringIntDoubleInsn");
+        throw TranslationException("Incorrect type: expected = \"string\" | \"double\" | \"int\", actual = " + string(typeToName(type)),
+                                   currentPosition());
         break;
     }
 }
@@ -129,7 +120,8 @@ void BytecodeGenerator::addMod(VarType type) {
         return;
     }
 
-    throw TranslationException("from BytecodeGenerator::addMod()");
+    throw TranslationException("Incorrect type: expected = \"int\", actual = " + string(typeToName(type)),
+                               currentPosition());
 }
 
 void BytecodeGenerator::addNeg(VarType type) {
@@ -140,20 +132,16 @@ void BytecodeGenerator::addNeg(VarType type) {
  * == 0 -> false
  * == 1 -> true
 */
-
 void BytecodeGenerator::addCastIntToBool() {
     Label lJump(bytecode());
     Label lEnd(bytecode());
 
     bytecode()->add(BC_ILOAD0);
     bytecode()->addBranch(BC_IFICMPE, lJump);
-//    bytecode()->add(BC_POP);
-//    bytecode()->add(BC_POP);
     bytecode()->add(BC_ILOAD1);
     bytecode()->addBranch(BC_JA, lEnd);
     bytecode()->bind(lJump);
     bytecode()->add(BC_ILOAD0);
-//    bytecode()->add(BC_POP);
     bytecode()->bind(lEnd);
 }
 
@@ -167,11 +155,9 @@ void BytecodeGenerator::addCastToBool(VarType type) {
         bytecode()->add(BC_DCMP);
         addCastIntToBool();
         break;
-    case VT_STRING:
-        bytecode()->add(BC_S2I);
-        addCastIntToBool();
     default:
-        throw TranslationException("from BytecodeGenerator::addCastToBool()");
+        throw TranslationException("Bad cast from " + string(typeToName(type)) + " to bool",
+                                   currentPosition());
         break;
     }
 }
@@ -185,13 +171,9 @@ void BytecodeGenerator::addCompareWith0andReplace(Instruction ifInsn,
     bytecode()->add(BC_ILOAD0);
     addSwap();
     bytecode()->addBranch(ifInsn, lTrue);
-//    bytecode()->add(BC_POP);
-//    bytecode()->add(BC_POP);
     bytecode()->add(falseInsn);
     bytecode()->addBranch(BC_JA, lEnd);
     bytecode()->bind(lTrue);
-//    bytecode()->add(BC_POP);
-//    bytecode()->add(BC_POP);
     bytecode()->add(trueInsn);
     bytecode()->bind(lEnd);
 }
@@ -210,36 +192,40 @@ void BytecodeGenerator::addCompInsn(VarType type, Instruction insn) {
         bytecode()->add(BC_DCMP);
         break;
     default:
-        throw TranslationException("from BytecodeGenerator::addCompInsn");
+        throw TranslationException("Incorrect type: expected = \"double\" | \"int\", actual = " + string(typeToName(type)),
+                                   currentPosition());
         break;
     }
 
     addCompareWith0andReplace(insn, BC_ILOAD1, BC_ILOAD0);
 }
 
-//  +  -  !
 void BytecodeGenerator::visitUnaryOpNode(UnaryOpNode *node) {
+    refreshCurrentPosition(node);
+
     AstNode* operand = node->operand();
     operand->visit(this);
-    VarType operandType = lastInferredType();// resolveType(operand);
+    VarType operandType = lastInferredType();
 
     TokenKind unOp = node->kind();
     switch(unOp) {
     case tADD:
         checkNumber(operandType);
+        _lastType = operandType;
         break;
     case tSUB:
         addNeg(operandType);
+        _lastType = operandType;
         break;
     case tNOT:
         addNot(operandType);
+        _lastType = VT_INT;
         break;
     default:
-        throw TranslationException("from BytecodeGenerator::visitUnaryOpNode()");
+        throw TranslationException("Incorrect token kind",
+                                   currentPosition());
         break;
     }
-
-    _lastType = operandType;
 }
 
 void BytecodeGenerator::addBitOpInsn(VarType type, Instruction insn) {
@@ -269,18 +255,19 @@ void BytecodeGenerator::addCastTwoLastToBool(VarType type) {
     addSwap();
 }
 
-void BytecodeGenerator::visitBinaryOpNode(BinaryOpNode *node)
-{
+void BytecodeGenerator::visitBinaryOpNode(BinaryOpNode *node) {
+    refreshCurrentPosition(node);
+
     AstNode* leftOperand = node->left();
     AstNode* rightOperand = node->right();
     TokenKind binOp = node->kind();
 
     leftOperand->visit(this);
-    VarType leftType = lastInferredType(); //resolveType(leftOperand);
+    VarType leftType = lastInferredType();
     checkNumber(leftType);
 
     rightOperand->visit(this);
-    VarType rightType = lastInferredType();// resolveType(rightOperand);
+    VarType rightType = lastInferredType();
     checkNumber(rightType);
 
     VarType commonType = getCommonType(leftType, rightType);
@@ -368,23 +355,28 @@ void BytecodeGenerator::visitBinaryOpNode(BinaryOpNode *node)
         _lastType = VT_INT;
         break;
     case tRANGE:
+        throw TranslationException("Improper use of RANGE",
+                                   currentPosition());
         break;
     default:
-        throw TranslationException("from BytecodeGenerator::visitBinaryOpNode()");
+        throw TranslationException("Incorrect token kind",
+                                   currentPosition());
         break;
     }
 }
 
-void BytecodeGenerator::visitIntLiteralNode(IntLiteralNode *node)
-{
+void BytecodeGenerator::visitIntLiteralNode(IntLiteralNode *node) {
+    refreshCurrentPosition(node);
+
     bytecode()->add(BC_ILOAD);
     bytecode()->addInt64(node->literal());
 
     _lastType = VT_INT;
 }
 
-void BytecodeGenerator::visitDoubleLiteralNode(DoubleLiteralNode *node)
-{
+void BytecodeGenerator::visitDoubleLiteralNode(DoubleLiteralNode *node) {
+    refreshCurrentPosition(node);
+
     bytecode()->add(BC_DLOAD);
     bytecode()->addDouble(node->literal());
 
@@ -396,6 +388,8 @@ uint16_t BytecodeGenerator::registerConstant(string const& constant) {
 }
 
 void BytecodeGenerator::visitStringLiteralNode(StringLiteralNode *node) {
+    refreshCurrentPosition(node);
+
     uint16_t id = registerConstant(node->literal());
     bytecode()->add(BC_SLOAD);
     bytecode()->addUInt16(id);
@@ -417,7 +411,8 @@ void BytecodeGenerator::loadValueFromVar(uint16_t scopeId,
         bytecode()->add(BC_LOADCTXSVAR);
         break;
     default:
-        throw TranslationException();
+        throw TranslationException("Incorrect type: expected = \"double\" | \"int\" | \"string\", actual = " + string(typeToName(varType)),
+                                   currentPosition());
         break;
     }
 
@@ -439,7 +434,8 @@ void BytecodeGenerator::storeValueToVar(uint16_t scopeId,
         bytecode()->add(BC_STORECTXSVAR);
         break;
     default:
-        throw TranslationException();
+        throw TranslationException("Incorrect type: expected = \"double\" | \"int\" | \"string\", actual = " + string(typeToName(varType)),
+                                   currentPosition());
         break;
     }
 
@@ -447,8 +443,9 @@ void BytecodeGenerator::storeValueToVar(uint16_t scopeId,
     bytecode()->addUInt16(varId);
 }
 
-//  =  +=  -=
 void BytecodeGenerator::visitStoreNode(StoreNode *node) {
+    refreshCurrentPosition(node);
+
     TokenKind op = node->op();
     const AstVar* var = node->var();
     VarType varType = var->type();
@@ -459,8 +456,8 @@ void BytecodeGenerator::visitStoreNode(StoreNode *node) {
     uint16_t varId = scopeVarId.second;
 
     AstNode* value = node->value();
-    value->visit(this); // after this operation on TOS lies value which i must store
-    VarType valueType = lastInferredType(); // resolveType(value);
+    value->visit(this);
+    VarType valueType = lastInferredType();
     addCast(valueType, varType);
 
     if (op == tINCRSET) {
@@ -473,12 +470,11 @@ void BytecodeGenerator::visitStoreNode(StoreNode *node) {
     }
 
     storeValueToVar(scopeId, varId, varType);
-
-//    _lastType = varType;
 }
 
-void BytecodeGenerator::visitLoadNode(LoadNode *node)
-{
+void BytecodeGenerator::visitLoadNode(LoadNode *node) {
+    refreshCurrentPosition(node);
+
     const AstVar* var = node->var();
     ScopeVarId scopeVarId = findScopeVarIdByName(var->name());
     uint16_t scopeId = scopeVarId.first;
@@ -489,10 +485,11 @@ void BytecodeGenerator::visitLoadNode(LoadNode *node)
 }
 
 void BytecodeGenerator::visitIfNode(IfNode *node) {
+    refreshCurrentPosition(node);
 
     AstNode* ifExpr = node->ifExpr();
     ifExpr->visit(this);
-    VarType ifExprType = lastInferredType(); //resolveType(ifExpr);
+    VarType ifExprType = lastInferredType();
     addCastToBool(ifExprType);
 
     Label lElse(bytecode());
@@ -500,15 +497,11 @@ void BytecodeGenerator::visitIfNode(IfNode *node) {
 
     bytecode()->add(BC_ILOAD0);
     bytecode()->addBranch(BC_IFICMPE, lElse);
-//    bytecode()->add(BC_POP);
-    //maybe add pop value of if expr
     BlockNode* thenBlock = node->thenBlock();
     thenBlock->visit(this);
     bytecode()->addBranch(BC_JA, lEndIf);
 
     bytecode()->bind(lElse);
-//    bytecode()->add(BC_POP);
-    //maybe add pop value of if expr
     BlockNode* elseBlock = node->elseBlock();
     if (elseBlock) {
         elseBlock->visit(this);
@@ -517,6 +510,8 @@ void BytecodeGenerator::visitIfNode(IfNode *node) {
 }
 
 void BytecodeGenerator::visitWhileNode(WhileNode *node) {
+    refreshCurrentPosition(node);
+
     AstNode* whileExpr = node->whileExpr();
     BlockNode* whileBlock = node->loopBlock();
 
@@ -528,69 +523,52 @@ void BytecodeGenerator::visitWhileNode(WhileNode *node) {
     bytecode()->add(BC_ILOAD0);
     bytecode()->addBranch(BC_IFICMPE, lEnd);
 
-//    bytecode()->add(BC_POP);
     whileBlock->visit(this);
 
     bytecode()->addBranch(BC_JA, lBegin);
     bytecode()->bind(lEnd);
-//    bytecode()->add(BC_POP);
 }
 
-//uint16_t BytecodeGenerator::getVarId(uint16_t scopeId, string const& name) {
-//    VarMap& vars = _vars[scopeId];
-//    for (VarMap::iterator varIt = vars.begin(); varIt != vars.end(); ++varIt) {
-//        const string& varName = varIt->first->name();
-//        if (varName == name) {
-//            return varIt->second;
-//        }
-//    }
-
-//    throw TranslationException();
-//}
-
-//std::pair<uint16_t, uint16_t> BytecodeGenerator::findScopeVarId(Scope* scope, const string& varName) {
-//    while (scope != 0) {
-//        uint16_t scopeId = _scopes[scope];
-//        Scope::VarIterator varIt(scope);
-//        while(varIt.hasNext()) {
-//            AstVar* var = varIt.next();
-//            if (var->name() == varName) {
-//                uint16_t varId = getVarId(scopeId, varName);
-//                return std::pair<uint16_t, uint16_t>(scopeId, varId);
-//            }
-//        }
-//        scope = scope->parent();
-//    }
-
-//    throw TranslationException();
-//}
-
-//std::pair<uint16_t, uint16_t> BytecodeGenerator::findScopeVarId(const string &name) {
-//    return findScopeVarId(currentScope(), name);
-//}
-
 void BytecodeGenerator::visitForNode(ForNode *node) {
+    refreshCurrentPosition(node);
+
     const AstVar* inVar = node->var();
     VarType inVarType = inVar->type();
+    if (inVarType != VT_INT) {
+        throw TranslationException("Incorrect type: expected = \"int\", actual = " + string(typeToName(inVarType)),
+                                   currentPosition());
+    }
     string inVarName = inVar->name();
 
     AstNode* inExpr = node->inExpr();
-    inExpr->visit(this); // left on preTOS, right on TOS,
-    VarType rangeType = lastInferredType(); //resolveType(inExpr);
-    addCast(rangeType, inVarType);
-    bytecode()->add(BC_SWAP);
-    addCast(rangeType, inVarType); // left on TOS, right below
+    if (!inExpr->isBinaryOpNode() || inExpr->asBinaryOpNode()->kind() != tRANGE) {
+        throw TranslationException("Incorrect \"FOR\" expression",
+                                   currentPosition());
+    }
+    AstNode* left = inExpr->asBinaryOpNode()->left();
+    left->visit(this);
+    addCast(lastInferredType(), inVarType);
+
+    AstNode* right = inExpr->asBinaryOpNode()->right();
+    right->visit(this);
+    addCast(lastInferredType(), inVarType);
+    addSwap();
 
     BlockNode* forBlock = node->body();
-//    Scope* forScope = forBlock->scope();
     uint16_t blockScopeId = currentFunctionTranslationContext()->getScopeId();
 
     ScopeVarId inScopeVarId = findScopeVarIdByName(inVarName);
     uint16_t scopeId = inScopeVarId.first;
     uint16_t inVarId = inScopeVarId.second;
 
-    uint16_t leftRangeId = currentFunctionTranslationContext()->addVar("<left>");
-    uint16_t rightRangeId = currentFunctionTranslationContext()->addVar("<right>");
+    uint16_t leftRangeId, rightRangeId;
+    try {
+        leftRangeId = currentFunctionTranslationContext()->addVar("<left>");
+        rightRangeId = currentFunctionTranslationContext()->addVar("<right>");
+    }
+    catch (TranslationException const& exception) {
+        throw TranslationException(exception.what(), currentPosition());
+    }
 
     storeValueToVar(blockScopeId, leftRangeId, inVarType);
     storeValueToVar(blockScopeId, rightRangeId, inVarType);
@@ -610,7 +588,7 @@ void BytecodeGenerator::visitForNode(ForNode *node) {
 
     forBlock->visit(this);
     loadValueFromVar(blockScopeId, leftRangeId, inVarType);
-    bytecode()->add(BC_ILOAD1); // only increase range
+    bytecode()->add(BC_ILOAD1);
     bytecode()->add(BC_IADD);
     storeValueToVar(blockScopeId, leftRangeId, inVarType);
 
@@ -622,34 +600,28 @@ void BytecodeGenerator::visitForNode(ForNode *node) {
     currentFunctionTranslationContext()->removeVarId("<right>");
 }
 
-//uint16_t BytecodeGenerator::translatedFunctionId() {
-//    return _bcFunctionStack.back();
-//}
-
-void BytecodeGenerator::addReturn()
-{
+void BytecodeGenerator::addReturn() {
     bytecode()->add(BC_RETURN);
 }
 
-void BytecodeGenerator::addSwap()
-{
+void BytecodeGenerator::addSwap() {
     bytecode()->add(BC_SWAP);
 }
 
 void BytecodeGenerator::visitReturnNode(ReturnNode *node) {
-    uint16_t id = currentFunctionTranslationContext()->getScopeId();  //translatedFunctionId();
-    BytecodeFunction* bcFunction = dynamic_cast<BytecodeFunction*>(_code->functionById(id)); //  _bcFunctions[id];
+    refreshCurrentPosition(node);
+
+    uint16_t id = currentFunctionTranslationContext()->getScopeId();
+    BytecodeFunction* bcFunction = dynamic_cast<BytecodeFunction*>(_code->functionById(id));
     VarType targetReturnType = bcFunction->returnType();
 
     AstNode* returnExpr = node->returnExpr();
     if (returnExpr != NULL) {
         returnExpr->visit(this);
-        VarType returnExprType = lastInferredType(); //resolveType(returnExpr);
+        VarType returnExprType = lastInferredType();
         addCast(returnExprType, targetReturnType);
     }
     addReturn();
-
-//    _lastType = targetReturnType;
 }
 
 void BytecodeGenerator::addPrint(VarType type) {
@@ -664,56 +636,42 @@ void BytecodeGenerator::addPrint(VarType type) {
         bytecode()->add(BC_SPRINT);
         break;
     default:
-        throw TranslationException("from BytecodeGenerator::addPrint()");
+        throw TranslationException("Incorrect type: expected = \"double\" | \"int\" | \"string\", actual = " + string(typeToName(type)),
+                                   currentPosition());
         break;
     }
 }
 
 void BytecodeGenerator::visitPrintNode(PrintNode *node) {
+    refreshCurrentPosition(node);
+
     for (uint32_t i = 0; i < node->operands(); ++i) {
         AstNode* operand = node->operandAt(i);
         operand->visit(this);
-        VarType operandType = lastInferredType(); //resolveType(operand);
+        VarType operandType = lastInferredType();
         addPrint(operandType);
     }
 }
 
 void BytecodeGenerator::visitNativeCallNode(NativeCallNode *node) {
+    refreshCurrentPosition(node);
 }
 
-//AstFunction* BytecodeGenerator::getFunction(Scope* scope, const string& name) {
-//    while(scope != 0) {
-//        Scope::FunctionIterator functionIt(scope);
-//        while(functionIt.hasNext()) {
-//            AstFunction* astFunction = functionIt.next();
-//            if (astFunction->name() == name) {
-//                return astFunction;
-//            }
-//        }
-//        scope = scope->parent();
-//    }
-
-//    throw TranslationException();
-//}
-
-//uint16_t BytecodeGenerator::getFunctionId(Scope* scope, const string& name) {
-//    AstFunction* astFunction = getFunction(scope, name);
-//    return _astFunctions[astFunction];
-//}
-
 void BytecodeGenerator::visitCallNode(CallNode *node) {
-    uint16_t calleeId;
+    refreshCurrentPosition(node);
 
+    uint16_t calleeId;
     if (isNative(node->name())) {
         calleeId = getNativeIdByName(node->name());
         const Signature* signature;
         const string* name;
         _code->nativeById(calleeId, &signature, &name);
+
         assert(signature->size() > 0);
         for (int i = signature->size() - 1; i > 0; --i) {
             AstNode* arg = node->parameterAt(i);
             arg->visit(this);
-            VarType argType = lastInferredType(); //resolveType(arg);
+            VarType argType = lastInferredType();
             VarType paramType = signature->at(i).first;
             addCast(argType, paramType);
         }
@@ -729,7 +687,7 @@ void BytecodeGenerator::visitCallNode(CallNode *node) {
         for (int i = node->parametersNumber() - 1; i > -1; --i) {
             AstNode* arg = node->parameterAt(i);
             arg->visit(this);
-            VarType argType = lastInferredType(); //resolveType(arg);
+            VarType argType = lastInferredType();
             VarType paramType = bcFunction->parameterType(i);
             addCast(argType, paramType);
         }
@@ -743,10 +701,17 @@ void BytecodeGenerator::visitCallNode(CallNode *node) {
 }
 
 void BytecodeGenerator::visitBlockNode(BlockNode *node) {
+    refreshCurrentPosition(node);
 
     Scope* scope = node->scope();
     FunctionTranslationContext* context = currentFunctionTranslationContext();
-    context->registerScopeVars(scope);
+    try {
+        context->registerScopeVars(scope);
+    }
+    catch (TranslationException const& exception) {
+        throw TranslationException(exception.what(), currentPosition());
+    }
+
     registerScopeFunctions(scope);
 
     for (size_t i = 0; i < node->nodes(); ++i) {
@@ -782,9 +747,6 @@ void BytecodeGenerator::registerFunction(AstFunction *astFunction) {
 
     BytecodeFunction* bcFunction = new BytecodeFunction(astFunction);
     uint16_t bcFunctionId = _code->addFunction(bcFunction);
-
-//    assert(bcFunctionId == _bcFunctions.size());
-//    _bcFunctions.push_back(bcFunction);
 
     _functionIdByName[bcFunction->name()] = bcFunctionId;
 }
@@ -827,8 +789,11 @@ void BytecodeGenerator::collectArgs(FunctionNode *node) {
 /*
  * Start translation of function with specified unique name
  * Function with specified name (unique!) must be already registered
+ * can contain only NativeCallNode
 */
-void BytecodeGenerator::visitFunctionNode(FunctionNode *node) { //this can contain NativeCallNode
+void BytecodeGenerator::visitFunctionNode(FunctionNode *node) {
+    refreshCurrentPosition(node);
+
     assert(_functionIdByName.find(node->name()) != _functionIdByName.end());
 
     if (isNative(node->name())) {
@@ -875,87 +840,9 @@ ScopeVarId BytecodeGenerator::findScopeVarIdByName(const string &name) {
             return context->getScopeVarId(name);
         }
     }
-    throw TranslationException("Couldn't find var with specified name");
+    throw TranslationException("Var with name = \"" + name + "\" is not defined",
+                               currentPosition());
 }
-
-//void BytecodeGenerator::visitAstFunction(AstFunction* astFunction) {
-//    uint16_t id = registerFunction(astFunction);
-//    BytecodeFunction* bcFunction = _bcFunctions[id];
-
-//    FunctionNode* function = astFunction->node();
-//    Scope* signatureScope = function->body()->scope()->parent();
-//    registerScope(signatureScope);
-//    Scope* bodyScope = function->body()->scope();
-//    uint16_t bodyScopeId = registerScope(bodyScope);
-
-//    bcFunction->setScopeId(bodyScopeId);
-
-//    _bcFunctionStack.push_back(id);
-//    _bytecodeStack.push_back(bcFunction->bytecode());
-
-//    function->visit(this);
-
-//    _bytecodeStack.pop_back();
-//    _bcFunctionStack.pop_back();
-//}
-
-//uint16_t BytecodeGenerator::registerFunction(AstFunction* astFunction) {
-//    if (_astFunctions.find(astFunction) != _astFunctions.end()) {
-//        return _astFunctions[astFunction];
-//    }
-//    uint16_t id = _bcFunctions.size();
-//    _astFunctions[astFunction] = id;
-//    BytecodeFunction* bcFunction = new BytecodeFunction(astFunction);
-//    //bcFunction->assignId(id);
-//    _bcFunctions.push_back(bcFunction);
-
-//    return id;
-//}
-
-//uint16_t BytecodeGenerator::registerVar(uint16_t scopeId, AstVar* var) {
-//    VarMap& vars = _vars[scopeId];
-//    uint16_t id = vars.size();
-//    vars[var] = id;
-
-//    return id;
-//}
-
-//uint16_t BytecodeGenerator::registerScope(Scope * scope) {
-//    if (_scopes.find(scope) != _scopes.end()) {
-//        return _scopes[scope];
-//    }
-//    uint16_t id = _scopes.size();
-//    _scopes[scope] = id;
-
-//    Scope::FunctionIterator functionIt(scope);
-//    while(functionIt.hasNext()) {
-//        AstFunction* astFunction = functionIt.next();
-//        registerFunction(astFunction);
-//    }
-
-//    Scope::VarIterator varIt(scope);
-//    while(varIt.hasNext()) {
-//        AstVar* var = varIt.next();
-//        registerVar(id, var);
-//    }
-
-//    functionIt = Scope::FunctionIterator(scope);
-//    while(functionIt.hasNext()) {
-//        AstFunction* astFunction = functionIt.next();
-//        visitAstFunction(astFunction);
-//    }
-
-//    return id;
-//}
-
-//void FunctionScopeManager::registerScopeVars(Scope* scope)
-//{
-//    Scope::VarIterator varIt(scope);
-//    while (varIt.hasNext()) {
-//        AstVar* var = varIt.next;
-//        VarNameIds& ids =
-//    }
-//}
 
 void BytecodeGenerator::addCallTopFunction() {
     BytecodeFunction* top = dynamic_cast<BytecodeFunction*>(_code->functionByName("<top>"));
@@ -965,19 +852,18 @@ void BytecodeGenerator::addCallTopFunction() {
     top->bytecode()->addUInt16(top->id());
 }
 
-InterpreterCodeImpl* BytecodeGenerator::makeBytecode(AstFunction* top) {
+Status* BytecodeGenerator::makeBytecode(AstFunction* top, InterpreterCodeImpl* *code) {
     _code = new InterpreterCodeImpl();
-    registerFunction(top);
-//    addCallTopFunction();
-    top->node()->visit(this);
+    try {
+        registerFunction(top);
+        top->node()->visit(this);
+    }
+    catch(TranslationException const& exception) {
+        return Status::Error(exception.what(), exception.position());
+    }
 
-//    for (std::vector<BytecodeFunction*>::const_iterator bcFunctionIt = _bcFunctions.begin(); bcFunctionIt != _bcFunctions.end(); ++bcFunctionIt) {
-//        _code->addFunction(*bcFunctionIt);
-//    }
-
-    return _code;
+    *code = _code;
+    return Status::Ok();
 }
 
 }
-
-// void *code = dlsym(RTLD_DEFAULT, node->nativeName().c_str());
