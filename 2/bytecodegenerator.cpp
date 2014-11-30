@@ -9,7 +9,8 @@ void BytecodeGenerator::checkNumber(VarType type) {
     }
 }
 
-BytecodeGenerator::BytecodeGenerator() {
+BytecodeGenerator::BytecodeGenerator()
+    : _lastType(VT_INVALID) {
 }
 
 BytecodeGenerator::~BytecodeGenerator() {
@@ -35,8 +36,12 @@ Bytecode* BytecodeGenerator::bytecode() {
 //    _currentScopeId = scopeId;
 //}
 
-VarType BytecodeGenerator::resolveType(AstNode *node) {
-    return _typeInferencer.resolveType(node);
+//VarType BytecodeGenerator::resolveType(AstNode *node) {
+//    return _typeInferencer.resolveType(node);
+//}
+
+VarType BytecodeGenerator::lastInferredType() {
+    return _lastType;
 }
 
 VarType BytecodeGenerator::getCommonType(VarType type1, VarType type2) {
@@ -142,12 +147,13 @@ void BytecodeGenerator::addCastIntToBool() {
 
     bytecode()->add(BC_ILOAD0);
     bytecode()->addBranch(BC_IFICMPE, lJump);
-    bytecode()->add(BC_POP);
-    bytecode()->add(BC_POP);
+//    bytecode()->add(BC_POP);
+//    bytecode()->add(BC_POP);
     bytecode()->add(BC_ILOAD1);
     bytecode()->addBranch(BC_JA, lEnd);
     bytecode()->bind(lJump);
-    bytecode()->add(BC_POP);
+    bytecode()->add(BC_ILOAD0);
+//    bytecode()->add(BC_POP);
     bytecode()->bind(lEnd);
 }
 
@@ -177,14 +183,15 @@ void BytecodeGenerator::addCompareWith0andReplace(Instruction ifInsn,
     Label lEnd(bytecode());
 
     bytecode()->add(BC_ILOAD0);
+    addSwap();
     bytecode()->addBranch(ifInsn, lTrue);
-    bytecode()->add(BC_POP);
-    bytecode()->add(BC_POP);
+//    bytecode()->add(BC_POP);
+//    bytecode()->add(BC_POP);
     bytecode()->add(falseInsn);
     bytecode()->addBranch(BC_JA, lEnd);
     bytecode()->bind(lTrue);
-    bytecode()->add(BC_POP);
-    bytecode()->add(BC_POP);
+//    bytecode()->add(BC_POP);
+//    bytecode()->add(BC_POP);
     bytecode()->add(trueInsn);
     bytecode()->bind(lEnd);
 }
@@ -214,7 +221,7 @@ void BytecodeGenerator::addCompInsn(VarType type, Instruction insn) {
 void BytecodeGenerator::visitUnaryOpNode(UnaryOpNode *node) {
     AstNode* operand = node->operand();
     operand->visit(this);
-    VarType operandType = resolveType(operand);
+    VarType operandType = lastInferredType();// resolveType(operand);
 
     TokenKind unOp = node->kind();
     switch(unOp) {
@@ -231,6 +238,8 @@ void BytecodeGenerator::visitUnaryOpNode(UnaryOpNode *node) {
         throw TranslationException("from BytecodeGenerator::visitUnaryOpNode()");
         break;
     }
+
+    _lastType = operandType;
 }
 
 void BytecodeGenerator::addBitOpInsn(VarType type, Instruction insn) {
@@ -255,9 +264,9 @@ void BytecodeGenerator::addAXOR(VarType type) {
 
 void BytecodeGenerator::addCastTwoLastToBool(VarType type) {
     addCastToBool(type);
-    bytecode()->add(BC_SWAP);
+    addSwap();
     addCastToBool(type);
-    bytecode()->add(BC_SWAP);
+    addSwap();
 }
 
 void BytecodeGenerator::visitBinaryOpNode(BinaryOpNode *node)
@@ -266,71 +275,97 @@ void BytecodeGenerator::visitBinaryOpNode(BinaryOpNode *node)
     AstNode* rightOperand = node->right();
     TokenKind binOp = node->kind();
 
-    VarType leftType = resolveType(leftOperand);
-    checkNumber(leftType);
-    VarType rightType = resolveType(rightOperand);
-    checkNumber(rightType);
-    VarType commonType = getCommonType(leftType, rightType);
-
     leftOperand->visit(this);
-    addCast(leftType, commonType);
+    VarType leftType = lastInferredType(); //resolveType(leftOperand);
+    checkNumber(leftType);
+
     rightOperand->visit(this);
+    VarType rightType = lastInferredType();// resolveType(rightOperand);
+    checkNumber(rightType);
+
+    VarType commonType = getCommonType(leftType, rightType);
+    addSwap();
+    addCast(leftType, commonType);
+    addSwap();
     addCast(rightType, commonType);
     
+    _lastType = commonType;
+
     switch (binOp) {
     //compare
     case tEQ:
+        addSwap();
         addCompInsn(commonType, BC_IFICMPE);
+        _lastType = VT_INT;
         break;
     case tNEQ:
+        addSwap();
         addCompInsn(commonType, BC_IFICMPNE);
+        _lastType = VT_INT;
         break;
     case tGE:
+        addSwap();
         addCompInsn(commonType, BC_IFICMPGE);
+        _lastType = VT_INT;
         break;
     case tLE:
+        addSwap();
         addCompInsn(commonType, BC_IFICMPLE);
+        _lastType = VT_INT;
         break;
     case tGT:
+        addSwap();
         addCompInsn(commonType, BC_IFICMPG);
+        _lastType = VT_INT;
         break;
     case tLT:
+        addSwap();
         addCompInsn(commonType, BC_IFICMPL);
+        _lastType = VT_INT;
         break;
         //logic
     case tOR:
         addCastTwoLastToBool(commonType);
         addAdd(commonType);
+        _lastType = VT_INT;
         break;
     case tAND:
         addCastTwoLastToBool(commonType);
         addMul(commonType);
+        _lastType = VT_INT;
         break;
         //bit
     case tAOR:
         addAOR(commonType);
+        _lastType = VT_INT;
         break;
     case tAAND:
         addAAND(commonType);
+        _lastType = VT_INT;
         break;
     case tAXOR:
         addAXOR(commonType);
+        _lastType = VT_INT;
         break;
         //ariphm
     case tADD:
         addAdd(commonType);
         break;
     case tSUB:
+        addSwap();
         addSub(commonType);
         break;
     case tMUL:
         addMul(commonType);
         break;
     case tDIV:
+        addSwap();
         addDiv(commonType);
         break;
     case tMOD:
+        addSwap();
         addMod(commonType);
+        _lastType = VT_INT;
         break;
     case tRANGE:
         break;
@@ -344,12 +379,16 @@ void BytecodeGenerator::visitIntLiteralNode(IntLiteralNode *node)
 {
     bytecode()->add(BC_ILOAD);
     bytecode()->addInt64(node->literal());
+
+    _lastType = VT_INT;
 }
 
 void BytecodeGenerator::visitDoubleLiteralNode(DoubleLiteralNode *node)
 {
     bytecode()->add(BC_DLOAD);
     bytecode()->addDouble(node->literal());
+
+    _lastType = VT_DOUBLE;
 }
 
 uint16_t BytecodeGenerator::registerConstant(string const& constant) {
@@ -360,6 +399,8 @@ void BytecodeGenerator::visitStringLiteralNode(StringLiteralNode *node) {
     uint16_t id = registerConstant(node->literal());
     bytecode()->add(BC_SLOAD);
     bytecode()->addUInt16(id);
+
+    _lastType = VT_STRING;
 }
 
 void BytecodeGenerator::loadValueFromVar(uint16_t scopeId,
@@ -419,7 +460,7 @@ void BytecodeGenerator::visitStoreNode(StoreNode *node) {
 
     AstNode* value = node->value();
     value->visit(this); // after this operation on TOS lies value which i must store
-    VarType valueType = resolveType(value);
+    VarType valueType = lastInferredType(); // resolveType(value);
     addCast(valueType, varType);
 
     if (op == tINCRSET) {
@@ -432,6 +473,8 @@ void BytecodeGenerator::visitStoreNode(StoreNode *node) {
     }
 
     storeValueToVar(scopeId, varId, varType);
+
+//    _lastType = varType;
 }
 
 void BytecodeGenerator::visitLoadNode(LoadNode *node)
@@ -441,13 +484,15 @@ void BytecodeGenerator::visitLoadNode(LoadNode *node)
     uint16_t scopeId = scopeVarId.first;
     uint16_t varId = scopeVarId.second;
     loadValueFromVar(scopeId, varId, var->type());
+
+    _lastType = var->type();
 }
 
 void BytecodeGenerator::visitIfNode(IfNode *node) {
 
     AstNode* ifExpr = node->ifExpr();
     ifExpr->visit(this);
-    VarType ifExprType = resolveType(ifExpr);
+    VarType ifExprType = lastInferredType(); //resolveType(ifExpr);
     addCastToBool(ifExprType);
 
     Label lElse(bytecode());
@@ -455,18 +500,18 @@ void BytecodeGenerator::visitIfNode(IfNode *node) {
 
     bytecode()->add(BC_ILOAD0);
     bytecode()->addBranch(BC_IFICMPE, lElse);
-    bytecode()->add(BC_POP);
+//    bytecode()->add(BC_POP);
     //maybe add pop value of if expr
     BlockNode* thenBlock = node->thenBlock();
     thenBlock->visit(this);
     bytecode()->addBranch(BC_JA, lEndIf);
 
     bytecode()->bind(lElse);
-    bytecode()->add(BC_POP);
+//    bytecode()->add(BC_POP);
     //maybe add pop value of if expr
     BlockNode* elseBlock = node->elseBlock();
     if (elseBlock) {
-        thenBlock->visit(this);
+        elseBlock->visit(this);
     }
     bytecode()->bind(lEndIf);
 }
@@ -483,12 +528,12 @@ void BytecodeGenerator::visitWhileNode(WhileNode *node) {
     bytecode()->add(BC_ILOAD0);
     bytecode()->addBranch(BC_IFICMPE, lEnd);
 
-    bytecode()->add(BC_POP);
+//    bytecode()->add(BC_POP);
     whileBlock->visit(this);
 
     bytecode()->addBranch(BC_JA, lBegin);
     bytecode()->bind(lEnd);
-    bytecode()->add(BC_POP);
+//    bytecode()->add(BC_POP);
 }
 
 //uint16_t BytecodeGenerator::getVarId(uint16_t scopeId, string const& name) {
@@ -531,7 +576,7 @@ void BytecodeGenerator::visitForNode(ForNode *node) {
 
     AstNode* inExpr = node->inExpr();
     inExpr->visit(this); // left on preTOS, right on TOS,
-    VarType rangeType = resolveType(inExpr);
+    VarType rangeType = lastInferredType(); //resolveType(inExpr);
     addCast(rangeType, inVarType);
     bytecode()->add(BC_SWAP);
     addCast(rangeType, inVarType); // left on TOS, right below
@@ -572,6 +617,9 @@ void BytecodeGenerator::visitForNode(ForNode *node) {
     bytecode()->addBranch(BC_JA, forBegin);
 
     forEnd.bind(bytecode()->length());
+
+    currentFunctionTranslationContext()->removeVarId("<left>");
+    currentFunctionTranslationContext()->removeVarId("<right>");
 }
 
 //uint16_t BytecodeGenerator::translatedFunctionId() {
@@ -583,18 +631,25 @@ void BytecodeGenerator::addReturn()
     bytecode()->add(BC_RETURN);
 }
 
+void BytecodeGenerator::addSwap()
+{
+    bytecode()->add(BC_SWAP);
+}
+
 void BytecodeGenerator::visitReturnNode(ReturnNode *node) {
     uint16_t id = currentFunctionTranslationContext()->getScopeId();  //translatedFunctionId();
-    BytecodeFunction* bcFunction = _bcFunctions[id];
+    BytecodeFunction* bcFunction = dynamic_cast<BytecodeFunction*>(_code->functionById(id)); //  _bcFunctions[id];
     VarType targetReturnType = bcFunction->returnType();
 
     AstNode* returnExpr = node->returnExpr();
     if (returnExpr != NULL) {
         returnExpr->visit(this);
-        VarType returnExprType = resolveType(returnExpr);
+        VarType returnExprType = lastInferredType(); //resolveType(returnExpr);
         addCast(returnExprType, targetReturnType);
     }
     addReturn();
+
+//    _lastType = targetReturnType;
 }
 
 void BytecodeGenerator::addPrint(VarType type) {
@@ -618,7 +673,7 @@ void BytecodeGenerator::visitPrintNode(PrintNode *node) {
     for (uint32_t i = 0; i < node->operands(); ++i) {
         AstNode* operand = node->operandAt(i);
         operand->visit(this);
-        VarType operandType = resolveType(operand);
+        VarType operandType = lastInferredType(); //resolveType(operand);
         addPrint(operandType);
     }
 }
@@ -651,31 +706,37 @@ void BytecodeGenerator::visitCallNode(CallNode *node) {
 
     if (isNative(node->name())) {
         calleeId = getNativeIdByName(node->name());
-        Signature* signature;
+        const Signature* signature;
+        const string* name;
+        _code->nativeById(calleeId, &signature, &name);
         assert(signature->size() > 0);
         for (int i = signature->size() - 1; i > 0; --i) {
             AstNode* arg = node->parameterAt(i);
             arg->visit(this);
-            VarType argType = resolveType(arg);
+            VarType argType = lastInferredType(); //resolveType(arg);
             VarType paramType = signature->at(i).first;
             addCast(argType, paramType);
         }
 
         bytecode()->add(BC_CALLNATIVE);
+
+        _lastType = signature->at(0).first;
     }
     else {
         calleeId = getFunctionIdByName(node->name());
-        BytecodeFunction* bcFunction = _bcFunctions.at(calleeId);
+        BytecodeFunction* bcFunction = dynamic_cast<BytecodeFunction*>(_code->functionById(calleeId));//_bcFunctions.at(calleeId);
 
         for (int i = node->parametersNumber() - 1; i > -1; --i) {
             AstNode* arg = node->parameterAt(i);
             arg->visit(this);
-            VarType argType = resolveType(arg);
+            VarType argType = lastInferredType(); //resolveType(arg);
             VarType paramType = bcFunction->parameterType(i);
             addCast(argType, paramType);
         }
 
         bytecode()->add(BC_CALL);
+
+        _lastType = bcFunction->returnType();
     }
 
     bytecode()->addInt16(calleeId);
@@ -720,10 +781,12 @@ void BytecodeGenerator::registerFunction(AstFunction *astFunction) {
     assert(_functionIdByName.find(astFunction->name()) == _functionIdByName.end());
 
     BytecodeFunction* bcFunction = new BytecodeFunction(astFunction);
-    bcFunction->assignId(_bcFunctions.size());
-    _bcFunctions.push_back(bcFunction);
+    uint16_t bcFunctionId = _code->addFunction(bcFunction);
 
-    _functionIdByName[bcFunction->name()] = bcFunction->id();
+//    assert(bcFunctionId == _bcFunctions.size());
+//    _bcFunctions.push_back(bcFunction);
+
+    _functionIdByName[bcFunction->name()] = bcFunctionId;
 }
 
 void BytecodeGenerator::translateScopeFunctions(Scope *scope) {
@@ -773,7 +836,7 @@ void BytecodeGenerator::visitFunctionNode(FunctionNode *node) { //this can conta
     }
 
     uint16_t functionId = _functionIdByName[node->name()];
-    BytecodeFunction* bcFunction = _bcFunctions[functionId];
+    BytecodeFunction* bcFunction = dynamic_cast<BytecodeFunction*>(_code->functionById(functionId)); //_bcFunctions[functionId];
     bcFunction->setScopeId(functionId);
     _bytecodeStack.push_back(bcFunction->bytecode());
 
@@ -894,14 +957,23 @@ ScopeVarId BytecodeGenerator::findScopeVarIdByName(const string &name) {
 //    }
 //}
 
+void BytecodeGenerator::addCallTopFunction() {
+    BytecodeFunction* top = dynamic_cast<BytecodeFunction*>(_code->functionByName("<top>"));
+    top->bytecode()->add(BC_CALL);
+
+    assert(top->id() == 0);
+    top->bytecode()->addUInt16(top->id());
+}
+
 InterpreterCodeImpl* BytecodeGenerator::makeBytecode(AstFunction* top) {
     _code = new InterpreterCodeImpl();
     registerFunction(top);
+//    addCallTopFunction();
     top->node()->visit(this);
 
-    for (std::vector<BytecodeFunction*>::const_iterator bcFunctionIt = _bcFunctions.begin(); bcFunctionIt != _bcFunctions.end(); ++bcFunctionIt) {
-        _code->addFunction(*bcFunctionIt);
-    }
+//    for (std::vector<BytecodeFunction*>::const_iterator bcFunctionIt = _bcFunctions.begin(); bcFunctionIt != _bcFunctions.end(); ++bcFunctionIt) {
+//        _code->addFunction(*bcFunctionIt);
+//    }
 
     return _code;
 }

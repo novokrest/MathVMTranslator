@@ -264,6 +264,14 @@ class Bytecode {
  protected:
     vector<uint8_t> _data;
  public:
+    Bytecode() {
+        std::cout << "new bytecode" << std::endl;
+    }
+
+    Bytecode(Bytecode const& bytecode) {
+        std::cout << "Bytecode was copied" << std::endl;
+    }
+
     void put(uint32_t index, uint8_t b) {
         if (index >= _data.size()) {
             _data.resize(index+1);

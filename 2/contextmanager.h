@@ -10,7 +10,7 @@ class VarValue
 {
     union {
         double d;
-        uint64_t i;
+        int64_t i;
         uint16_t id;
     } _value;
 

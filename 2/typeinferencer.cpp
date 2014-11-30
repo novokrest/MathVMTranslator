@@ -14,10 +14,10 @@ TypeInferencer::TypeInferencer() {
 TypeInferencer::~TypeInferencer() {
 }
 
-VarType TypeInferencer::resolveType(AstNode *node) {
-    node->visit(this);
-    return _type;
-}
+//VarType TypeInferencer::resolveType(AstNode *node) {
+//    node->visit(this);
+//    return _type;
+//}
 
 bool TypeInferencer::find(TokenKind op, const TokenKind ops[], int count) {
     for (int i = 0; i < count; ++i) {

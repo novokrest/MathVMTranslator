@@ -3,6 +3,7 @@
 
 #include <cstring>
 #include <exception>
+#include "mathvm.h"
 
 using std::string;
 
@@ -44,15 +45,22 @@ public:
 
 class InterpretationException: public MessageException
 {
+    uint32_t _position;
+
 public:
-    InterpretationException() {
+    InterpretationException(uint32_t position = mathvm::VT_INVALID)
+        : _position(position) {
     }
 
-    InterpretationException(string const& message)
-        : MessageException(message) {
+    InterpretationException(string const& message, uint32_t position = mathvm::VT_INVALID)
+        : MessageException(message), _position(position) {
     }
 
     virtual ~InterpretationException() throw() {
+    }
+
+    uint32_t position() {
+        return _position;
     }
 };
 

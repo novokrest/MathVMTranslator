@@ -12,7 +12,7 @@ class InterpreterCodeImpl : public Code
     InterpreterStack _stack;
     ContextManager _contextManager;
     std::vector<Bytecode*> _bytecodes;
-    std::vector<uint64_t> _indexes;
+    std::vector<uint32_t> _indexes;
 
     void executeBytecode();
     void executeBytecodeInsn(Instruction insn);
@@ -20,9 +20,9 @@ class InterpreterCodeImpl : public Code
     void addNewBytecode(Bytecode* bytecode);
     void removeLastBytecode();
 
-    uint64_t bytecodeIndex();
-    void shiftBytecodeIndex(int64_t shift);
-    void setBytecodeIndex(uint64_t index);
+    uint32_t bytecodeIndex();
+    void shiftBytecodeIndex(int16_t shift);
+    void setBytecodeIndex(uint32_t index);
 
     static int64_t compare(double upper, double lower);
     static int64_t compare(int64_t upper, int64_t lower);

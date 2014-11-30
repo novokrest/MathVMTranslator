@@ -1,0 +1,13 @@
+int r;
+int r1;
+
+function void fib(int x) {
+    if (x == 0) {
+        return;
+    } else {
+        fib(x - 1);
+    }
+}
+
+fib(100000);
+print(r, '\n');

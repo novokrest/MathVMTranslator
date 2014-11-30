@@ -9,7 +9,7 @@ SOURCES += main.cpp \
     vm/mathvm.cpp \
     vm/parser.cpp \
     vm/scanner.cpp \
-    vm/translator.cpp \
+#    vm/translator.cpp \
     vm/utils.cpp \
     libs/AsmJit/Assembler.cpp \
     libs/AsmJit/AssemblerX86X64.cpp \
@@ -30,7 +30,8 @@ SOURCES += main.cpp \
     2/typeinferencer.cpp \
     2/interpretercode.cpp \
     2/contextmanager.cpp \
-    2/functioncontext.cpp
+    2/functioncontext.cpp \
+    2/translator.cpp
 
 HEADERS += \
     vm/parser.h \
@@ -72,4 +73,60 @@ INCLUDEPATH += vm \
 OTHER_FILES += \
     libs/AsmJit/README.txt \
     README.txt \
-    test_function.mvm
+    test_function.mvm \
+    tests/add.expect \
+    tests/add.mvm \
+    tests/assign.expect \
+    tests/assign.mvm \
+    tests/bitwise.expect \
+    tests/bitwise.mvm \
+    tests/div.expect \
+    tests/div.mvm \
+    tests/expr.expect \
+    tests/expr.mvm \
+    tests/for.expect \
+    tests/for.mvm \
+    tests/function.expect \
+    tests/function.mvm \
+    tests/if.expect \
+    tests/if.mvm \
+    tests/literal.expect \
+    tests/literal.mvm \
+    tests/mul.expect \
+    tests/mul.mvm \
+    tests/sub.expect \
+    tests/sub.mvm \
+    tests/var.mvm \
+    tests/while.expect \
+    tests/while.mvm \
+    tests/run.py \
+    tests/additional/3function.expect \
+    tests/additional/ackermann_closure.expect \
+    tests/additional/ackermann_closure.mvm \
+    tests/additional/ackermann.expect \
+    tests/additional/ackermann.mvm \
+    tests/additional/casts.expect \
+    tests/additional/casts.mvm \
+    tests/additional/closure.mvm \
+    tests/additional/complex.expect \
+    tests/additional/complex.mvm \
+    tests/additional/complex2.expect \
+    tests/additional/complex2.mvm \
+    tests/additional/fib_closure.expect \
+    tests/additional/fib_closure.mvm \
+    tests/additional/fib.expect \
+    tests/additional/fib.mvm \
+    tests/additional/function-call.expect \
+    tests/additional/function-call.mvm \
+    tests/additional/function-cast.expect \
+    tests/additional/function-cast.mvm \
+    tests/additional/function.expect \
+    tests/additional/function.mvm \
+    tests/additional/vars.expect \
+    tests/additional/vars.mvm \
+    tests/optional/function_native.expect \
+    tests/optional/function_native.mvm \
+    tests/optional/plot.mvm \
+    tests/perf/lissajous.mvm \
+    tests/perf/plot.mvm \
+    tests/perf/prime.mvm

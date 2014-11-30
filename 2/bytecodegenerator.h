@@ -38,7 +38,7 @@ public:
 
     void setScope(Scope* scope);
     VarType inferredType() const;
-    VarType resolveType(AstNode* node);
+//    VarType resolveType(AstNode* node);
     VarType commonType(VarType v1, VarType v2) const;
 
 #define VISITOR_FUNCTION(type, name) \
@@ -86,37 +86,32 @@ class FunctionTranslationContext
 
 class BytecodeGenerator : public AstVisitor
 {
-    class BytecodeVar
-    {
-        uint16_t _scopeId;
-        uint16_t _id;
-        VarType _type;
+//    class BytecodeVar
+//    {
+//        uint16_t _scopeId;
+//        uint16_t _id;
+//        VarType _type;
 
-    public:
-        BytecodeVar(uint16_t scopeId, uint16_t id, VarType type)
-            : _scopeId(scopeId), _id(id), _type(type) {
-        }
+//    public:
+//        BytecodeVar(uint16_t scopeId, uint16_t id, VarType type)
+//            : _scopeId(scopeId), _id(id), _type(type) {
+//        }
 
-        uint16_t scopeId() {
-            return _scopeId;
-        }
+//        uint16_t scopeId() {
+//            return _scopeId;
+//        }
 
-        uint16_t id() {
-            return _id;
-        }
+//        uint16_t id() {
+//            return _id;
+//        }
 
-        VarType type() {
-            return _type;
-        }
-    };
-
-    VarType _lastType;
+//        VarType type() {
+//            return _type;
+//        }
+//    };
 
     void storeValueToVar(uint16_t scopeId, uint16_t varId, VarType varType);
     void loadValueFromVar(uint16_t scopeId, uint16_t varId, VarType varType);
-
-    void checkNumber(VarType type);
-
 
 //    typedef std::map<uint16_t, TranslatedFunction*> FunctionIdMap;
 
@@ -146,9 +141,12 @@ class BytecodeGenerator : public AstVisitor
 //    NativeMap _nativeById;
 //    NativeVec _natives;
 
+    VarType _lastType;
     TypeInferencer _typeInferencer;
 
-    VarType resolveType(AstNode* node);
+    void checkNumber(VarType type);
+    VarType lastInferredType();
+//    VarType resolveType(AstNode* node);
     VarType getCommonType(VarType type1, VarType type2);
 
     void addCast(VarType type, VarType targetType);
@@ -180,6 +178,7 @@ class BytecodeGenerator : public AstVisitor
 
     void addPrint(VarType type);
     void addReturn();
+    void addSwap();
 
 //    uint16_t translatedFunctionId();
 //    AstFunction* getFunction(Scope* scope, const string& name);
@@ -205,7 +204,7 @@ class BytecodeGenerator : public AstVisitor
     typedef std::map<string, uint16_t> FunctionNameToIdMap;
     FunctionNameToIdMap _functionIdByName;
     FunctionNameToIdMap _nativeIdByName;
-    std::vector<BytecodeFunction*> _bcFunctions;
+//    std::vector<BytecodeFunction*> _bcFunctions;
     std::vector<NativeFunctionDescriptor> _natives;
 
     std::vector<Bytecode*> _bytecodeStack;
@@ -227,6 +226,8 @@ class BytecodeGenerator : public AstVisitor
     FunctionTranslationContext* currentFunctionTranslationContext();
 
     ScopeVarId findScopeVarIdByName(const string& name);
+
+    void addCallTopFunction();
 
 public:
     BytecodeGenerator();
